@@ -39,8 +39,8 @@ if __name__ == '__main__':
     parser.add_argument("--schema", help="export database schema", nargs="*", metavar="table")
     parser.add_argument("--create", help="create missing tables", action="store_true")
     parser.add_argument("--exports", help="export full table data", nargs="+", metavar="table")
-    parser.add_argument("--imports", help="load full table data", nargs="+", metavar="table")
-    parser.add_argument("--updates", help="export table data updates", nargs="+", metavar="table")
+    parser.add_argument("--imports", help="load full table data", nargs="*", metavar="table")
+    #parser.add_argument("--updates", help="export table data updates", nargs="*", metavar="table")
     args = parser.parse_args()
 
 
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         else:
             exp.sync_tables(schema_mgr)
 
-    if args.schema:
+    if not args.schema is None:
         if len(args.schema) > 0:
             final_args = make_arg_list(args.schema)
             schema_mgr.exportSObject(final_args)
@@ -68,9 +68,10 @@ if __name__ == '__main__':
     if args.create:
         schema_mgr.create_tables()
 
-    if args.exports and len(args.exports) > 0:
+    if not args.exports is None:
         exp = SFExporter(context)
-        for tablename in args.exports:
+        table_list = make_arg_list(args.exports)
+        for tablename in table_list:
             exp.export_copy(tablename)
 
     if args.imports and len(args.imports) > 0:
@@ -79,12 +80,12 @@ if __name__ == '__main__':
             count = imp.bulk_load(context.dbdriver, tablename)
             print('loaded {} records'.format(count))
 
-    if args.updates and len(args.updates) > 0:
-        exp = SFExporter()
-        for tablename in args.updates:
-            stamp = dbmgr.getMaxTimestamp(tablename)
-            if not stamp is None:
-                print('stamp=' + stamp)
-            exp.export_copy(dbmgr, sf, tablename, timestamp=stamp)
+    #if args.updates and len(args.updates) > 0:
+    #    exp = SFExporter()
+    #    for tablename in args.updates:
+    #        stamp = dbmgr.getMaxTimestamp(tablename)
+    #        if not stamp is None:
+    #            print('stamp=' + stamp)
+    #        exp.export_copy(dbmgr, sf, tablename, timestamp=stamp)
 
 
