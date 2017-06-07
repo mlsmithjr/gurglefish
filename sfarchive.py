@@ -61,7 +61,7 @@ if __name__ == '__main__':
             final_args = make_arg_list(args.schema)
             schema_mgr.exportSObject(final_args)
         else:
-            schema_mgr.exportSObjects()
+            schema_mgr.export_sobjects()
 
     if args.create:
         schema_mgr.create_tables()

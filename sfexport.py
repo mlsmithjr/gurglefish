@@ -39,14 +39,8 @@ class SFExporter:
 
     def __init__(self, context : Context):
         self.context = context
-        self.storagedir = context.exportdir
+        self.storagedir = context.filemgr.exportdir
         os.makedirs(self.storagedir, exist_ok=True)
-
-    def load_translate_handler(self, sobject_name):
-        import importlib.machinery
-        loader = importlib.machinery.SourceFileLoader(sobject_name, os.path.join(config.storagedir, 'db', self.context.config_env.dbname, 'schema', sobject_name, '{}_Transform.py'.format(sobject_name)))
-        handler = loader.load_module(sobject_name)
-        return handler
 
 
     def sync_tables(self, schema_mgr : SchemaManager, filterlist = None):
@@ -58,14 +52,14 @@ class SFExporter:
         for table in tablelist:
             tablename = table['name']
             tstamp = self.context.dbdriver.getMaxTimestamp(tablename)
-            self.etl(schema_mgr.get_query(tablename), tablename, timestamp=tstamp)
+            self.etl(self.context.filemgr.get_sobject_query(tablename), tablename, timestamp=tstamp)
 
     def etl(self, soql, sobject_name, timestamp=None, path=None):
         if path is None: path = './'
 
         dbdriver = self.context.dbdriver
 
-        xlate_handler = self.load_translate_handler(sobject_name)
+        xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
         if not timestamp is None:
             soql += " where LastModifiedDate > {}".format(querytools.sfTimestamp(timestamp))
         cur = dbdriver.cursor
@@ -91,10 +85,9 @@ class SFExporter:
     def export_copy(self, sobject_name, timestamp=None, path=None):
         if path is None: path = './'
 
-        xlate_handler = self.load_translate_handler(sobject_name)
+        xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
 
-        with open(os.path.join(config.storagedir, 'db', self.context.config_env.dbname, 'schema', sobject_name, '{}_map.json'.format(sobject_name)), 'r') as mapfile:
-            fieldlist = json.load(mapfile)
+        fieldlist = self.context.filemgr.get_sobject_map(sobject_name)
         fieldmap = dict((f['db_field'].lower(), f) for f in fieldlist)
 
         tablefields = self.context.dbdriver.get_table_fields(sobject_name)
@@ -148,7 +141,7 @@ class SFExporter:
         except ImportError:
             from yaml import Loader, Dumper
 
-        xlate_handler = self.load_translate_handler(sobject_name)
+        xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
 
         soql = db.get_query(sobject_name)
         if not timestamp is None:
@@ -178,16 +171,12 @@ class SFExporter:
     def exportInsert(self, db, sf, sobject_name, timestamp=None, path=None):
         if path is None: path = './'
 
-        with open(os.path.join(config.storagedir, 'db', self.dbname, 'schema', sobject_name, '{}_map.json'.format(sobject_name)), 'r') as mapfile:
-            fieldlist = json.load(mapfile)
+        fieldlist = self.context.filemgr.get_sobject_map(sobject_name)
+
         fieldmap = dict((f['db_field'], f) for f in fieldlist)
         soqlnames = fieldmap.keys()
 
-        import importlib.machinery
-
-        loader = importlib.machinery.SourceFileLoader(sobject_name, os.path.join(config.storagedir, 'db', self.dbname, 'schema', sobject_name, '{}_Transform.py'.format(sobject_name)))
-        handle = loader.load_module(sobject_name)
-
+        handle = self.context.filemgr.load_translate_handler(sobject_name)
         soql = db.get_query(sobject_name)
         if not timestamp is None:
             soql += ' where LastModifiedDate > {0}'.format(querytools.sfTimestamp(timestamp))
@@ -218,12 +207,7 @@ class SFExporter:
     def exportCSV(self, db, sf, sobject_name, timestamp = None, path = None):
         if path is None: path = './'
 
-        # load transformer
-        import importlib.machinery
-
-        loader = importlib.machinery.SourceFileLoader(sobject_name, os.path.join(config.storagedir, 'db', self.dbname, 'schema', sobject_name, '{}_Transform.py'.format(sobject_name)))
-        handle = loader.load_module(sobject_name)
-
+        handle = self.context.filemgr.load_translate_handler(sobject_name)
         with open(os.path.join(config.storagedir, 'db', self.dbname, 'schema', sobject_name, '{}_map.json'.format(sobject_name)), 'r') as mapfile:
             fieldlist = json.load(mapfile)
 

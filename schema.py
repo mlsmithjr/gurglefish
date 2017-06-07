@@ -8,6 +8,7 @@ __author__ = 'mark'
 
 class SchemaManager:
     db = None
+    filemgr = None
     sfclient = None
     driver = None
     createmap = {}
@@ -19,8 +20,8 @@ class SchemaManager:
     def __init__(self, context : Context):
         self.driver = context.dbdriver
         self.sfclient = context.sfclient
-        self.storagedir = context.schemadir
-        os.makedirs(self.storagedir, exist_ok = True)
+        self.filemgr = context.filemgr
+        self.storagedir = self.filemgr.schemadir
 
     def get_os_tables(self):
         table_list = []
@@ -35,11 +36,6 @@ class SchemaManager:
                 except Exception as ex:
                     print(ex)
         return table_list
-
-    def get_query(self, sobject_name):
-        with open(os.path.join(self.storagedir, sobject_name, 'query.soql'), 'r') as queryfile:
-            soql = queryfile.read()
-            return soql
 
     def create_tables(self, filterlist = None):
         for root, dirs, files in os.walk(self.storagedir):
@@ -80,6 +76,13 @@ class SchemaManager:
 
     @staticmethod
     def accept_sobject(sobj:dict) -> bool:
+        """
+        determine if the named sobject is suitable for exporting
+
+        :param sobj:Name of sobject/table
+        :return: True or False
+        """
+
         name = sobj['name']
 
         if not sobj['custom']:
@@ -94,7 +97,7 @@ class SchemaManager:
             return False
         return True
 
-    def exportSObjects(self, filter = None):
+    def export_sobjects(self, filter = None):
         print('loading sobjects')
         solist = self.sfclient.getSobjectList()
         if filter:
@@ -115,35 +118,13 @@ class SchemaManager:
         for new_sobject_name in sorted(new_names):
             new_sobject_name = new_sobject_name.lower()
 
-            os.makedirs(os.path.join(self.storagedir, new_sobject_name), exist_ok=True)
-
             fields = self.sfclient.getFieldList(new_sobject_name)
-            with open(os.path.join(self.storagedir, new_sobject_name, '{}.json'.format(new_sobject_name)), 'w') as mapfile:
-                json.dump(fields, mapfile, indent=2)
+            table_name, fieldmap, sql, select = self.driver.make_create_table(fields, new_sobject_name)
+            parser = self.driver.make_transformer(new_sobject_name, table_name, fieldmap)
 
-            table_name, fieldlist, sql, select = self.driver.make_create_table(fields, new_sobject_name)
-
-            parser = self.driver.make_transformer(new_sobject_name, table_name, fieldlist)
-
-            with open(os.path.join(self.storagedir, new_sobject_name, '{}_map.json'.format(new_sobject_name)), 'w') as mapfile:
-                json.dump(fieldlist, mapfile, indent=2)
-
-            with open(os.path.join(self.storagedir, new_sobject_name, '{}.sql'.format(new_sobject_name)), 'w') as schemafile:
-                schemafile.write(sql)
-                schemafile.write(';\n')
-                schemafile.write('\n\n')
-
-            with open(os.path.join(self.storagedir, new_sobject_name, '{}_Transform.py'.format(new_sobject_name)), 'w') as parserfile:
-                parserfile.write(parser)
-
-            with open(os.path.join(self.storagedir, new_sobject_name, 'query.soql'), 'w') as queryfile:
-                queryfile.write(select)
-
-                    #for field in fieldmap:
-            #    ts.write('insert into map_drop (sobject_name, table_name, sobject_field, table_field, fieldtype) values (')
-            #    ts.write("'{0}',".format(new_sobject_name))
-            #    ts.write("'{0}',".format(field['table_name']))
-            #    ts.write("'{0}',".format(field['sobject_field']))
-            #    ts.write("'{0}',".format(field['db_field']))
-            #    ts.write("'{0}');\n".format(field['fieldtype']))
+            self.filemgr.save_sobject_fields(new_sobject_name, fields)
+            self.filemgr.save_sobject_transformer(new_sobject_name, parser)
+            self.filemgr.save_sobject_map(new_sobject_name, fieldmap)
+            self.filemgr.save_table_create(new_sobject_name, sql + ';\n\n')
+            self.filemgr.save_sobject_query(new_sobject_name, select)
 
