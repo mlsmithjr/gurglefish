@@ -55,21 +55,6 @@ class SFClient:
     def close(self):
         pass
 
-    @staticmethod
-    def accept_sobject(sobj:dict) -> bool:
-        name = sobj['name']
-
-        if not sobj['custom']:
-            if not name in ['Account','Opportunity','User','Contact','Asset','Campaign','CampaignMember','Contract','Lead','RecordType']:
-                return False
-        if sobj['customSetting'] == True or sobj['replicateable'] == False or sobj['updateable'] == False:
-            return False
-        if name.endswith('__Tag') or name.endswith('__History') or name.endswith('__Feed'): return False
-        if name.find('__') != name.find('__c'):
-            return False
-        if name[0:4] == 'Apex' or name in ('scontrol','weblink','profile'):
-            return False
-        return True
 
     def getSobject(self, name):
         sobject_doc = self._invokeGetREST('sobjects/{}/describe'.format(name), {})
@@ -84,7 +69,8 @@ class SFClient:
         #if omit_packages:
         #    sobjectList = [sobj for sobj in sobjectList if not '__' in sobj['name']]
         # scrub out objects we can't use
-        sobjectList = [sobj for sobj in sobjectList if self.accept_sobject(sobj)]
+
+        #sobjectList = [sobj for sobj in sobjectList if self.accept_sobject(sobj)]
         #CaptureManager.save(self._bucket, 'sobjectList', sobjectList)
         return sobjectList
 

@@ -121,7 +121,6 @@ class Manager(object):
         self._res = {}
         modules = pkgutil.iter_modules(path=['drivers'])
         for finder, mod_name, ispkg in modules:
-            print('mod_name=' + mod_name)
             l = finder.find_module(mod_name)
             mod = l.load_module(mod_name)
             cls = getattr(mod, 'Driver')

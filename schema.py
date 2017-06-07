@@ -78,9 +78,29 @@ class SchemaManager:
                 raise ex
         return self.process_sobjects(docs)
 
-    def exportSObjects(self):
+    @staticmethod
+    def accept_sobject(sobj:dict) -> bool:
+        name = sobj['name']
+
+        if not sobj['custom']:
+            if not name in ['Account','Opportunity','User','Contact','Asset','Campaign','CampaignMember','Contract','Lead','RecordType']:
+                return False
+        if sobj['customSetting'] == True or sobj['replicateable'] == False or sobj['updateable'] == False:
+            return False
+        if name.endswith('__Tag') or name.endswith('__History') or name.endswith('__Feed'): return False
+        if name.find('__') != name.find('__c'):
+            return False
+        if name[0:4] == 'Apex' or name in ('scontrol','weblink','profile'):
+            return False
+        return True
+
+    def exportSObjects(self, filter = None):
         print('loading sobjects')
         solist = self.sfclient.getSobjectList()
+        if filter:
+            solist = [sobj for sobj in solist if sobj in filter]
+        else:
+            solist = [sobj for sobj in solist if self.accept_sobject(sobj)]
         return self.process_sobjects(solist)
 
     def process_sobjects(self, solist):
@@ -97,7 +117,11 @@ class SchemaManager:
 
             os.makedirs(os.path.join(self.storagedir, new_sobject_name), exist_ok=True)
 
-            table_name, fieldlist, sql, select = self.driver.make_create_table(self.sfclient, new_sobject_name)
+            fields = self.sfclient.getFieldList(new_sobject_name)
+            with open(os.path.join(self.storagedir, new_sobject_name, '{}.json'.format(new_sobject_name)), 'w') as mapfile:
+                json.dump(fields, mapfile, indent=2)
+
+            table_name, fieldlist, sql, select = self.driver.make_create_table(fields, new_sobject_name)
 
             parser = self.driver.make_transformer(new_sobject_name, table_name, fieldlist)
 

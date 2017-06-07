@@ -286,14 +286,13 @@ class Driver(DbDriverMeta):
         return newfieldlist
 
 
-    def make_create_table(self, sf, sobject_name):
+    def make_create_table(self, fields, sobject_name):
         #if self.table_exists(sobject_name) or sobject_name in self.createstack:
         #    return
 
         #self.createstack.append(sobject_name)
         sobject_name = sobject_name.lower()
         print('new sobject: ' + sobject_name)
-        fields = sf.getFieldList(sobject_name)
         tablecols = []
         objectcols = set()
         fieldlist = []
