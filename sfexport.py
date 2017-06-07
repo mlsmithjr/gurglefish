@@ -137,7 +137,7 @@ class SFExporter:
                 counter += 1
                 if counter % 2000 == 0 and sys.stdout.isatty():
                     print('{}: exporting {} records: {:.0f}%\r'.format(sobject_name, totalSize, (counter / totalSize) * 100), end='\r', flush=True)
-            print("exported {} records{}".format(counter, ' '*10))
+            print("\nexported {} records{}".format(counter, ' '*10))
 
 
     def exportYAML(self, db, sf, sobject_name, timestamp=None, path=None):

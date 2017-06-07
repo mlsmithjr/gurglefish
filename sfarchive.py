@@ -76,7 +76,9 @@ if __name__ == '__main__':
 
     if args.imports and len(args.imports) > 0:
         imp = SFImporter(context.config_env.dbname)
-        for tablename in args.imports:
+        table_list = make_arg_list(args.imports)
+        for tablename in table_list:
+            print('loading {}'.format(tablename))
             count = imp.bulk_load(context.dbdriver, tablename)
             print('loaded {} records'.format(count))
 

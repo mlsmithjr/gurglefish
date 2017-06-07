@@ -45,12 +45,10 @@ def st(rec, name, subname = None, fieldlen = 0):
         node = rec[name]
         if subname is not None:
             if subname in node:
-                val = node[subname]
-                if len(val) > fieldlen:
-                    raise Exception('value too large for field "{}": {}'.format(name, val))
+                val = node[subname][0:fieldlen]
                 return scrub(val)
             return None
-        return scrub(node)
+        return scrub(node[0:fieldlen])
     return None
 
 
