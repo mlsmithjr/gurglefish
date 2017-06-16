@@ -16,12 +16,19 @@ class SchemaManager:
     fieldmap = {}
     refs = {}
     sodict = dict()
+    filters = []
 
     def __init__(self, context : Context):
         self.driver = context.dbdriver
         self.sfclient = context.sfclient
         self.filemgr = context.filemgr
         self.storagedir = self.filemgr.schemadir
+        self.filters = context.filemgr.get_global_filters() + context.filemgr.get_filters()
+
+    def inspect(self):
+        solist = self.sfclient.getSobjectList()
+        solist = [sobj for sobj in solist if self.accept_sobject(sobj)]
+        return solist
 
     def get_os_tables(self):
         table_list = []
@@ -74,8 +81,7 @@ class SchemaManager:
                 raise ex
         return self.process_sobjects(docs)
 
-    @staticmethod
-    def accept_sobject(sobj:dict) -> bool:
+    def accept_sobject(self, sobj:dict) -> bool:
         """
         determine if the named sobject is suitable for exporting
 
@@ -84,6 +90,9 @@ class SchemaManager:
         """
 
         name = sobj['name']
+
+        if len(self.filters) > 0 and name not in self.filters:
+            return False
 
         if not sobj['custom']:
             if not name in ['Account','Opportunity','User','Contact','Asset','Campaign','CampaignMember','Contract','Lead','RecordType']:

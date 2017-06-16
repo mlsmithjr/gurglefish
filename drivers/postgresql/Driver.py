@@ -1,3 +1,4 @@
+import json
 import subprocess
 import os
 from subprocess import PIPE
@@ -8,6 +9,7 @@ import psycopg2
 import psycopg2.extras
 
 import config
+import tools
 from DriverManager import DbDriverMeta, GetDbTablesResult, GetMappedTablesResult, FieldMapResult
 from db.Capture import CaptureManager
 from db.mdatadb import ConfigEnv
@@ -66,7 +68,7 @@ class Driver(DbDriverMeta):
             print(ex)
         return 0
 
-    def upsert(self, cur, table_name, trec : dict):
+    def upsert(self, cur, table_name, trec : dict, journal = None):
         assert('Id' in trec)
 
         cur.execute("select * from {} where id = '{}'".format(table_name, trec['Id']))
@@ -82,13 +84,19 @@ class Driver(DbDriverMeta):
         data = []
 
         if len(orig_rec) == 0:
+            table_fields = self.get_table_fields(table_name)
+            existing_field_names = table_fields.keys()
             for k, v in trec.items():
-                namelist.append(k)
-                data.append(v)
+                k = k.lower()
+                if k in existing_field_names:
+                    namelist.append(k)
+                    data.append(v)
 
             valueplaceholders = ','.join('%s' for i in range(len(data)))
             fieldnames = ','.join(namelist)
             sql = 'insert into "{0}" ({1}) values ({2});'.format(table_name, fieldnames, valueplaceholders)
+            if journal:
+                journal.write('i:{} --> {}\n'.format(sql, json.dumps(data, default=tools.json_serial)))
             cur.execute(sql, data)
         else:
             #
@@ -111,6 +119,8 @@ class Driver(DbDriverMeta):
                 sets.append(name + r'=%s')
             sql += ','.join(sets)
             sql += " where id = '{}'".format(pkey)
+            if journal:
+                journal.write('u:{} --> {}\n'.format(sql, json.dumps(data, default=tools.json_serial)))
             cur.execute(sql, data)
 
 

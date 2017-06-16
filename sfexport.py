@@ -10,21 +10,13 @@ import datetime
 import yaml
 import config
 import querytools
+import tools
 from DriverManager import DbDriverMeta
 from context import Context
 from schema import SchemaManager
 
 __author__ = 'mark'
 
-
-def json_serial(obj):
-    """JSON serializer for objects not serializable by default json code"""
-
-    if isinstance(obj, datetime.datetime):
-        serial = obj.isoformat()
-        return serial
-    return str(obj)
-    raise TypeError("Type not serializable")
 
 
 def _escape(val):
@@ -48,7 +40,7 @@ class SFExporter:
             filterlist = [name.lower() for name in filterlist]
         tablelist = schema_mgr.get_os_tables()
         if filterlist:
-            tablelist = tablelist and filterlist
+            tablelist = [table for table in tablelist if table['name'] in filterlist]
         for table in tablelist:
             tablename = table['name']
             tstamp = self.context.dbdriver.getMaxTimestamp(tablename)
@@ -64,23 +56,30 @@ class SFExporter:
             soql += " where LastModifiedDate > {}".format(querytools.sfTimestamp(timestamp))
         cur = dbdriver.cursor
         counter = 0
-        for rec in self.context.sfclient.query(soql):
-            del rec['attributes']
-            trec = xlate_handler.parse(rec)
+        journal = self.context.filemgr.create_journal(sobject_name)
+        try:
+            for rec in self.context.sfclient.query(soql):
+                del rec['attributes']
+                trec = xlate_handler.parse(rec)
 
-            try:
-                dbdriver.upsert(cur, sobject_name, trec)
-            except Exception as ex:
-                with open('/tmp/debug.json', 'w') as x:
-                   x.write(json.dumps(trec, indent=4, default=json_serial))
-                raise ex
+                try:
+                    dbdriver.upsert(cur, sobject_name, trec, journal)
+                except Exception as ex:
+                    with open('/tmp/debug.json', 'w') as x:
+                       x.write(json.dumps(trec, indent=4, default=tools.json_serial))
+                    raise ex
 
-            counter += 1
-            if counter % 100 == 0:
-                print('inserted {}'.format(counter))
-                dbdriver.commit()
-        dbdriver.commit()
-        cur.close()
+                counter += 1
+                if counter % 100 == 0:
+                    print('processed {}'.format(counter))
+                    dbdriver.commit()
+            dbdriver.commit()
+        except Exception as ex:
+            dbdriver.rollback()
+            raise ex
+        finally:
+            cur.close()
+            journal.close()
 
     def export_copy(self, sobject_name, timestamp=None, path=None):
         if path is None: path = './'

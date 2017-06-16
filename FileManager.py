@@ -1,3 +1,4 @@
+import gzip
 import os
 import json
 
@@ -15,6 +16,26 @@ class FileManager(object):
         self.exportdir = os.path.join(basedir, 'db', envname, 'export')
         os.makedirs(self.schemadir, exist_ok=True)
         os.makedirs(self.exportdir, exist_ok=True)
+
+    def create_journal(self, sobject_name):
+        f = gzip.open(os.path.join(self.exportdir, '{}_journal.log.gz'.format(sobject_name)), 'wb')
+        return f
+
+    def get_global_filters(self):
+        try:
+            with open(os.path.join(self.basedir, 'global-filters.txt'), 'r') as filterfile:
+                return filterfile.readlines()
+        except:
+            pass
+        return []
+
+    def get_filters(self):
+        try:
+            with open(os.path.join(self.basedir, 'db', self.envname, 'filters.txt', 'r')) as filterfile:
+                return filterfile.readlines()
+        except:
+            pass
+        return []
 
     def get_schema_list(self):
         return os.listdir(self.schemadir)
@@ -39,7 +60,7 @@ class FileManager(object):
             return json.load(mapfile)
 
     def get_sobject_query(self, sobject_name):
-        with open(os.path.join(self.schemadir, sobject_name, 'query.soql'), 'w') as queryfile:
+        with open(os.path.join(self.schemadir, sobject_name, 'query.soql'), 'r') as queryfile:
             return queryfile.read()
 
     def save_sobject_fields(self, sobject_name, fields):

@@ -22,9 +22,11 @@ def json_serial(obj):
 
 
 class SFImporter:
+    context = None
 
-    def __init__(self, dbname):
-        self.storagedir = os.path.join(config.storagedir, 'db', dbname, 'export')
+    def __init__(self, context):
+        self.context = context
+        self.storagedir = context.filemgr.exportdir
 
 
     def bulk_load(self, db : DbDriverMeta, sobject_name, path = None):
@@ -42,7 +44,7 @@ class SFImporter:
 
         #tablefields = db.get_table_fields(sobject_name)
         counter = 0
-        with open(os.path.join(self.storagedir, sobject_name + '.yaml'), 'r') as yamlfile:
+        with open(os.path.join(self.context.filemgr.exportdir, sobject_name + '.yaml'), 'r') as yamlfile:
             cur = db.cursor
             for rec in yaml.load_all(yamlfile, Loader=Loader):
                 namelist = []
@@ -77,7 +79,7 @@ class SFImporter:
         if path is None: path = './'
         table_name, fieldlist = db.get_field_map(sobject_name)
 #        with gzip.open(os.path.join(self.storagedir, sobject_name + '.csv.gz'), 'rb') as csvfile:
-        with open(os.path.join(self.storagedir, sobject_name + '.csv'), 'r') as csvfile:
+        with open(os.path.join(self.context.filemgr.exportdir, sobject_name + '.csv'), 'r') as csvfile:
             csvreader = csv.reader(csvfile)
             fieldnames = next(csvreader)
             cur = db.db.cursor

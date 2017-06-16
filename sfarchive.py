@@ -33,13 +33,13 @@ def make_arg_list(args_list):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(epilog='@file arguments designate a file containing actual arguments, one per line')
-    parser.add_argument("-e", "--env", help="Environment/DB settings name", metavar="env_name", required=True)
-    parser.add_argument("-s", "--sync", help="sync table updates", nargs="*", metavar="object|@file")
+    parser.add_argument("--env", help="Environment/DB settings name", metavar="env_name", required=True)
+    parser.add_argument("--sync", help="sync table updates", nargs="*", metavar="object|@file")
     parser.add_argument("--schema", help="load sobject schema", nargs="*", metavar="object|@file")
     parser.add_argument("--create", help="create missing tables", action="store_true")
-    parser.add_argument("-x", "--export", help="export full sobject data", nargs="+", metavar="object|@file")
-    parser.add_argument("-i", "--load", help="load/import full table data, table must be empty", nargs="*", metavar="object|@file")
-    # parser.add_argument("--updates", help="export table data updates", nargs="*", metavar="table")
+    parser.add_argument("--export", help="export full sobject data", nargs="+", metavar="object|@file")
+    parser.add_argument("--load", help="load/import full table data, table must be empty", nargs="*", metavar="object|@file")
+    parser.add_argument("--inspect", help="inspect objects", nargs="*", metavar="object|@file")
     args = parser.parse_args()
 
     envname = args.env
@@ -47,6 +47,12 @@ if __name__ == '__main__':
     #    env, dbmgr, sf = tools.setup_env(envname)
     context = tools.setup_env(envname)
     schema_mgr = SchemaManager(context)
+
+    if args.inspect is not None:
+        thelist = schema_mgr.inspect()
+        for entry in thelist:
+            print(entry['name'])
+
 
     if args.sync is not None:
         exp = SFExporter(context)
@@ -73,7 +79,7 @@ if __name__ == '__main__':
             exp.export_copy(tablename)
 
     if args.load and len(args.load) > 0:
-        imp = SFImporter(context.config_env.dbname)
+        imp = SFImporter(context)
         table_list = make_arg_list(args.imports)
         for tablename in table_list:
             print('loading {}'.format(tablename))
