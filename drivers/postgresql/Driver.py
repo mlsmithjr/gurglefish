@@ -96,7 +96,7 @@ class Driver(DbDriverMeta):
             fieldnames = ','.join(namelist)
             sql = 'insert into "{0}" ({1}) values ({2});'.format(table_name, fieldnames, valueplaceholders)
             if journal:
-                journal.write('i:{} --> {}\n'.format(sql, json.dumps(data, default=tools.json_serial)))
+                journal.write(bytes('i:{} --> {}\n'.format(sql, json.dumps(data, default=tools.json_serial)), 'utf-8'))
             cur.execute(sql, data)
         else:
             #
@@ -111,6 +111,9 @@ class Driver(DbDriverMeta):
                 if k in orig_rec and orig_rec[k] != v:
                     namelist.append(k)
                     data.append(v)
+                #
+                # !!!!! FIX DATE/DATETIME PROBLEM
+                #
 
             assert(pkey != None)
             sql = 'update {} set '.format(table_name)
@@ -120,7 +123,7 @@ class Driver(DbDriverMeta):
             sql += ','.join(sets)
             sql += " where id = '{}'".format(pkey)
             if journal:
-                journal.write('u:{} --> {}\n'.format(sql, json.dumps(data, default=tools.json_serial)))
+                journal.write(bytes('u:{} --> {}\n'.format(sql, json.dumps(data, default=tools.json_serial)), 'utf-8'))
             cur.execute(sql, data)
 
 

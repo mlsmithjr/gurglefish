@@ -74,6 +74,7 @@ class SFExporter:
                     print('processed {}'.format(counter))
                     dbdriver.commit()
             dbdriver.commit()
+            print('processed {}'.format(counter))
         except Exception as ex:
             dbdriver.rollback()
             raise ex

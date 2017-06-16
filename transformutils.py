@@ -56,7 +56,7 @@ def pyTimestamp(t):
     return datetime.strptime(t[0:19], '%Y-%m-%dT%H:%M:%S')
 
 def pyDate(d):
-    return datetime.strptime(d, '%Y-%m-%d')
+    return datetime.strptime(d, '%Y-%m-%d').date()
 
 def scrub(s):
     s = s.replace('\\t',' ')
