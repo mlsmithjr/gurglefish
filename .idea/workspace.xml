@@ -2,10 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d124db09-0291-4cb6-a10f-1f5c4d52d993" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/drivers/postgresql/Driver.py" afterPath="$PROJECT_DIR$/drivers/postgresql/Driver.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sfexport.py" afterPath="$PROJECT_DIR$/sfexport.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/transformutils.py" afterPath="$PROJECT_DIR$/transformutils.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -83,14 +81,14 @@
       <file leaf-file-name="sfexport.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/sfexport.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="197">
-              <caret line="65" column="0" lean-forward="false" selection-start-line="65" selection-start-column="0" selection-end-line="65" selection-end-column="0" />
+            <state relative-caret-position="269">
+              <caret line="45" column="22" lean-forward="false" selection-start-line="45" selection-start-column="22" selection-end-line="45" selection-end-column="22" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
-                <marker date="1497631190598" expanded="true" signature="3132:3147" ph="select missi... missing_value" />
-                <marker date="1497631190598" expanded="true" signature="3132:3149" ph="select {} fr... " />
-                <marker date="1497631190598" expanded="true" signature="8314:8342" ph="insert into missing_value... " />
-                <marker date="1497631190598" expanded="true" signature="8314:8345" ph="insert into missing_value... " />
+                <marker date="1497640062147" expanded="true" signature="3215:3230" ph="select missi... missing_value" />
+                <marker date="1497640062147" expanded="true" signature="3215:3232" ph="select {} fr... " />
+                <marker date="1497640062147" expanded="true" signature="8397:8425" ph="insert into missing_value... " />
+                <marker date="1497640062147" expanded="true" signature="8397:8428" ph="insert into missing_value... " />
               </folding>
             </state>
           </provider>
@@ -143,26 +141,26 @@
       <file leaf-file-name="Driver.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/drivers/postgresql/Driver.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="197">
-              <caret line="117" column="0" lean-forward="false" selection-start-line="117" selection-start-column="0" selection-end-line="117" selection-end-column="0" />
+            <state relative-caret-position="894">
+              <caret line="118" column="30" lean-forward="false" selection-start-line="118" selection-start-column="30" selection-end-line="118" selection-end-column="30" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
-                <marker date="1497633581073" expanded="true" signature="2246:2273" ph="select id fr... id" />
-                <marker date="1497633581073" expanded="true" signature="2246:2278" ph="select id fr... id" />
-                <marker date="1497633581073" expanded="true" signature="3048:3084" ph="insert into &quot;missing_value&quot;... " />
-                <marker date="1497633581073" expanded="true" signature="4449:4602" ph="select colum... columns" />
-                <marker date="1497633581073" expanded="true" signature="4449:4615" ph="select colum... columns" />
-                <marker date="1497633581073" expanded="true" signature="4449:4620" ph="select colum... columns" />
-                <marker date="1497633581073" expanded="true" signature="5183:5279" ph="SELECT table... tables" />
-                <marker date="1497633581073" expanded="true" signature="5561:5655" ph="select count... tables" />
-                <marker date="1497633581073" expanded="true" signature="5885:5953" ph="select table... table_map" />
-                <marker date="1497633581073" expanded="true" signature="6394:6454" ph="select id, t... table_map" />
-                <marker date="1497633581073" expanded="true" signature="6578:6622" ph="select * fro... field_map" />
-                <marker date="1497633581073" expanded="true" signature="7024:7080" ph="select table... table_map" />
-                <marker date="1497633581073" expanded="true" signature="7521:7646" ph="insert into map_drop... " />
-                <marker date="1497633581073" expanded="true" signature="7961:8098" ph="select * fro... information_schema" />
-                <marker date="1497633581073" expanded="true" signature="13488:13516" ph="create table... missing_value" />
-                <marker date="1497633581073" expanded="true" signature="13663:13716" ph="select max(l... missing_value" />
+                <marker date="1497640094640" expanded="true" signature="2246:2277" ph="select id fr... id" />
+                <marker date="1497640094640" expanded="true" signature="2246:2282" ph="select id fr... id" />
+                <marker date="1497640094640" expanded="true" signature="3052:3088" ph="insert into &quot;missing_value&quot;... " />
+                <marker date="1497640094640" expanded="true" signature="4455:4608" ph="select colum... columns" />
+                <marker date="1497640094640" expanded="true" signature="4455:4621" ph="select colum... columns" />
+                <marker date="1497640094640" expanded="true" signature="4455:4626" ph="select colum... columns" />
+                <marker date="1497640094640" expanded="true" signature="5189:5285" ph="SELECT table... tables" />
+                <marker date="1497640094640" expanded="true" signature="5567:5661" ph="select count... tables" />
+                <marker date="1497640094640" expanded="true" signature="5891:5959" ph="select table... table_map" />
+                <marker date="1497640094640" expanded="true" signature="6400:6460" ph="select id, t... table_map" />
+                <marker date="1497640094640" expanded="true" signature="6584:6628" ph="select * fro... field_map" />
+                <marker date="1497640094640" expanded="true" signature="7030:7086" ph="select table... table_map" />
+                <marker date="1497640094640" expanded="true" signature="7527:7652" ph="insert into map_drop... " />
+                <marker date="1497640094640" expanded="true" signature="7967:8104" ph="select * fro... information_schema" />
+                <marker date="1497640094640" expanded="true" signature="13503:13531" ph="create table... missing_value" />
+                <marker date="1497640094640" expanded="true" signature="13678:13731" ph="select max(l... missing_value" />
               </folding>
             </state>
           </provider>
@@ -196,6 +194,7 @@
       <find>final_args</find>
       <find>json_ser</find>
       <find>gzip</find>
+      <find>money</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -226,9 +225,9 @@
         <option value="$PROJECT_DIR$/schema.py" />
         <option value="$PROJECT_DIR$/tools.py" />
         <option value="$PROJECT_DIR$/FileManager.py" />
+        <option value="$PROJECT_DIR$/transformutils.py" />
         <option value="$PROJECT_DIR$/sfexport.py" />
         <option value="$PROJECT_DIR$/drivers/postgresql/Driver.py" />
-        <option value="$PROJECT_DIR$/transformutils.py" />
       </list>
     </option>
   </component>
@@ -239,7 +238,7 @@
     <sorting>DEFINITION_ORDER</sorting>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="13" />
+    <option name="x" value="14" />
     <option name="y" value="34" />
     <option name="width" value="1818" />
     <option name="height" value="1301" />
@@ -753,7 +752,8 @@
     </history-entry>
   </component>
   <component name="ToolWindowManager">
-    <frame x="13" y="34" width="1818" height="1301" extended-state="0" />
+    <frame x="14" y="34" width="1818" height="1301" extended-state="0" />
+    <editor active="true" />
     <layout>
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="DB Browser" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3299435" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
@@ -823,22 +823,22 @@
           <caret line="171" column="55" lean-forward="false" selection-start-line="171" selection-start-column="55" selection-end-line="171" selection-end-column="55" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <marker date="1497633581073" expanded="true" signature="2246:2273" ph="select id fr... id" />
-            <marker date="1497633581073" expanded="true" signature="2246:2278" ph="select id fr... id" />
-            <marker date="1497633581073" expanded="true" signature="3048:3084" ph="insert into &quot;missing_value&quot;... " />
-            <marker date="1497633581073" expanded="true" signature="4449:4602" ph="select colum... columns" />
-            <marker date="1497633581073" expanded="true" signature="4449:4615" ph="select colum... columns" />
-            <marker date="1497633581073" expanded="true" signature="4449:4620" ph="select colum... columns" />
-            <marker date="1497633581073" expanded="true" signature="5183:5279" ph="SELECT table... tables" />
-            <marker date="1497633581073" expanded="true" signature="5561:5655" ph="select count... tables" />
-            <marker date="1497633581073" expanded="true" signature="5885:5953" ph="select table... table_map" />
-            <marker date="1497633581073" expanded="true" signature="6394:6454" ph="select id, t... table_map" />
-            <marker date="1497633581073" expanded="true" signature="6578:6622" ph="select * fro... field_map" />
-            <marker date="1497633581073" expanded="true" signature="7024:7080" ph="select table... table_map" />
-            <marker date="1497633581073" expanded="true" signature="7521:7646" ph="insert into map_drop... " />
-            <marker date="1497633581073" expanded="true" signature="7961:8098" ph="select * fro... information_schema" />
-            <marker date="1497633581073" expanded="true" signature="13488:13516" ph="create table... missing_value" />
-            <marker date="1497633581073" expanded="true" signature="13663:13716" ph="select max(l... missing_value" />
+            <marker date="1497640094640" expanded="true" signature="2246:2277" ph="select id fr... id" />
+            <marker date="1497640094640" expanded="true" signature="2246:2282" ph="select id fr... id" />
+            <marker date="1497640094640" expanded="true" signature="3052:3088" ph="insert into &quot;missing_value&quot;... " />
+            <marker date="1497640094640" expanded="true" signature="4455:4608" ph="select colum... columns" />
+            <marker date="1497640094640" expanded="true" signature="4455:4621" ph="select colum... columns" />
+            <marker date="1497640094640" expanded="true" signature="4455:4626" ph="select colum... columns" />
+            <marker date="1497640094640" expanded="true" signature="5189:5285" ph="SELECT table... tables" />
+            <marker date="1497640094640" expanded="true" signature="5567:5661" ph="select count... tables" />
+            <marker date="1497640094640" expanded="true" signature="5891:5959" ph="select table... table_map" />
+            <marker date="1497640094640" expanded="true" signature="6400:6460" ph="select id, t... table_map" />
+            <marker date="1497640094640" expanded="true" signature="6584:6628" ph="select * fro... field_map" />
+            <marker date="1497640094640" expanded="true" signature="7030:7086" ph="select table... table_map" />
+            <marker date="1497640094640" expanded="true" signature="7527:7652" ph="insert into map_drop... " />
+            <marker date="1497640094640" expanded="true" signature="7967:8104" ph="select * fro... information_schema" />
+            <marker date="1497640094640" expanded="true" signature="13503:13531" ph="create table... missing_value" />
+            <marker date="1497640094640" expanded="true" signature="13678:13731" ph="select max(l... missing_value" />
           </folding>
         </state>
       </provider>
@@ -1088,6 +1088,14 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/transformutils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="141">
+          <caret line="23" column="0" lean-forward="false" selection-start-line="23" selection-start-column="0" selection-end-line="23" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/schema.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="24">
@@ -1098,50 +1106,42 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/transformutils.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="141">
-          <caret line="23" column="0" lean-forward="false" selection-start-line="23" selection-start-column="0" selection-end-line="23" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/sfexport.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="197">
-          <caret line="65" column="0" lean-forward="false" selection-start-line="65" selection-start-column="0" selection-end-line="65" selection-end-column="0" />
+        <state relative-caret-position="269">
+          <caret line="45" column="22" lean-forward="false" selection-start-line="45" selection-start-column="22" selection-end-line="45" selection-end-column="22" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
-            <marker date="1497631190598" expanded="true" signature="3132:3147" ph="select missi... missing_value" />
-            <marker date="1497631190598" expanded="true" signature="3132:3149" ph="select {} fr... " />
-            <marker date="1497631190598" expanded="true" signature="8314:8342" ph="insert into missing_value... " />
-            <marker date="1497631190598" expanded="true" signature="8314:8345" ph="insert into missing_value... " />
+            <marker date="1497640062147" expanded="true" signature="3215:3230" ph="select missi... missing_value" />
+            <marker date="1497640062147" expanded="true" signature="3215:3232" ph="select {} fr... " />
+            <marker date="1497640062147" expanded="true" signature="8397:8425" ph="insert into missing_value... " />
+            <marker date="1497640062147" expanded="true" signature="8397:8428" ph="insert into missing_value... " />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/drivers/postgresql/Driver.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="197">
-          <caret line="117" column="0" lean-forward="false" selection-start-line="117" selection-start-column="0" selection-end-line="117" selection-end-column="0" />
+        <state relative-caret-position="894">
+          <caret line="118" column="30" lean-forward="false" selection-start-line="118" selection-start-column="30" selection-end-line="118" selection-end-column="30" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <marker date="1497633581073" expanded="true" signature="2246:2273" ph="select id fr... id" />
-            <marker date="1497633581073" expanded="true" signature="2246:2278" ph="select id fr... id" />
-            <marker date="1497633581073" expanded="true" signature="3048:3084" ph="insert into &quot;missing_value&quot;... " />
-            <marker date="1497633581073" expanded="true" signature="4449:4602" ph="select colum... columns" />
-            <marker date="1497633581073" expanded="true" signature="4449:4615" ph="select colum... columns" />
-            <marker date="1497633581073" expanded="true" signature="4449:4620" ph="select colum... columns" />
-            <marker date="1497633581073" expanded="true" signature="5183:5279" ph="SELECT table... tables" />
-            <marker date="1497633581073" expanded="true" signature="5561:5655" ph="select count... tables" />
-            <marker date="1497633581073" expanded="true" signature="5885:5953" ph="select table... table_map" />
-            <marker date="1497633581073" expanded="true" signature="6394:6454" ph="select id, t... table_map" />
-            <marker date="1497633581073" expanded="true" signature="6578:6622" ph="select * fro... field_map" />
-            <marker date="1497633581073" expanded="true" signature="7024:7080" ph="select table... table_map" />
-            <marker date="1497633581073" expanded="true" signature="7521:7646" ph="insert into map_drop... " />
-            <marker date="1497633581073" expanded="true" signature="7961:8098" ph="select * fro... information_schema" />
-            <marker date="1497633581073" expanded="true" signature="13488:13516" ph="create table... missing_value" />
-            <marker date="1497633581073" expanded="true" signature="13663:13716" ph="select max(l... missing_value" />
+            <marker date="1497640094640" expanded="true" signature="2246:2277" ph="select id fr... id" />
+            <marker date="1497640094640" expanded="true" signature="2246:2282" ph="select id fr... id" />
+            <marker date="1497640094640" expanded="true" signature="3052:3088" ph="insert into &quot;missing_value&quot;... " />
+            <marker date="1497640094640" expanded="true" signature="4455:4608" ph="select colum... columns" />
+            <marker date="1497640094640" expanded="true" signature="4455:4621" ph="select colum... columns" />
+            <marker date="1497640094640" expanded="true" signature="4455:4626" ph="select colum... columns" />
+            <marker date="1497640094640" expanded="true" signature="5189:5285" ph="SELECT table... tables" />
+            <marker date="1497640094640" expanded="true" signature="5567:5661" ph="select count... tables" />
+            <marker date="1497640094640" expanded="true" signature="5891:5959" ph="select table... table_map" />
+            <marker date="1497640094640" expanded="true" signature="6400:6460" ph="select id, t... table_map" />
+            <marker date="1497640094640" expanded="true" signature="6584:6628" ph="select * fro... field_map" />
+            <marker date="1497640094640" expanded="true" signature="7030:7086" ph="select table... table_map" />
+            <marker date="1497640094640" expanded="true" signature="7527:7652" ph="insert into map_drop... " />
+            <marker date="1497640094640" expanded="true" signature="7967:8104" ph="select * fro... information_schema" />
+            <marker date="1497640094640" expanded="true" signature="13503:13531" ph="create table... missing_value" />
+            <marker date="1497640094640" expanded="true" signature="13678:13731" ph="select max(l... missing_value" />
           </folding>
         </state>
       </provider>

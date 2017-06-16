@@ -38,11 +38,12 @@ class SFExporter:
     def sync_tables(self, schema_mgr : SchemaManager, filterlist = None):
         if filterlist:
             filterlist = [name.lower() for name in filterlist]
-        tablelist = schema_mgr.get_os_tables()
+        tablelist = [table for table in schema_mgr.get_os_tables() if table['exists']]
         if filterlist:
             tablelist = [table for table in tablelist if table['name'] in filterlist]
         for table in tablelist:
             tablename = table['name']
+            print('{}:'.format(tablename))
             tstamp = self.context.dbdriver.getMaxTimestamp(tablename)
             self.etl(self.context.filemgr.get_sobject_query(tablename), tablename, timestamp=tstamp)
 

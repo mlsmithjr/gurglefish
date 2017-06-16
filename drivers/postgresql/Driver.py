@@ -71,7 +71,7 @@ class Driver(DbDriverMeta):
     def upsert(self, cur, table_name, trec : dict, journal = None):
         assert('Id' in trec)
 
-        cur.execute("select * from {} where id = '{}'".format(table_name, trec['Id']))
+        cur.execute("select * from \"{}\" where id = '{}'".format(table_name, trec['Id']))
         tmp_rec = cur.fetchone()
         orig_rec = {}
         index = 0
@@ -116,7 +116,7 @@ class Driver(DbDriverMeta):
                 #
 
             assert(pkey != None)
-            sql = 'update {} set '.format(table_name)
+            sql = 'update "{}" set '.format(table_name)
             sets = []
             for name in namelist:
                 sets.append(name + r'=%s')
@@ -265,7 +265,7 @@ class Driver(DbDriverMeta):
             sql += 'numeric ({0},{1}) '.format(field['precision'], field['scale'])
             fieldlen = field['precision'] + field['scale'] + 1
         elif fieldtype == 'currency':
-            sql += 'money '
+            sql += 'numeric (18,2) '
         elif fieldtype == 'int':
             sql += 'integer '
             fieldlen = 15
