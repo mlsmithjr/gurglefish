@@ -59,12 +59,19 @@ class SFExporter:
         counter = 0
         journal = self.context.filemgr.create_journal(sobject_name)
         try:
+            sync_start = datetime.datetime.now()
+            inserted = 0
+            updated = 0
             for rec in self.context.sfclient.query(soql):
                 del rec['attributes']
                 trec = xlate_handler.parse(rec)
 
                 try:
-                    dbdriver.upsert(cur, sobject_name, trec, journal)
+                    i, u = dbdriver.upsert(cur, sobject_name, trec, journal)
+                    if i:
+                        inserted += 1
+                    if u:
+                        updated += 1
                 except Exception as ex:
                     with open('/tmp/debug.json', 'w') as x:
                        x.write(json.dumps(trec, indent=4, default=tools.json_serial))
@@ -73,9 +80,10 @@ class SFExporter:
                 counter += 1
                 if counter % 100 == 0:
                     print('processed {}'.format(counter))
-                    dbdriver.commit()
             dbdriver.commit()
             print('processed {}'.format(counter))
+            if counter > 0:
+                dbdriver.insert_sync_stats(sobject_name, sync_start, datetime.datetime.now(), timestamp, inserted, updated)
         except Exception as ex:
             dbdriver.rollback()
             raise ex

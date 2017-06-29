@@ -24,6 +24,7 @@ class Driver(DbDriverMeta):
         self.db = psycopg2.connect("dbname='{0}' user='{1}' password='{2}' host='{3}' port='{4}'".format(dbenv.dbname, dbenv.dbuser, dbenv.dbpass, dbenv.dbhost, dbport))
         self._bucket = 'db_' + dbenv.dbname
         self.storagedir = os.path.join(config.storagedir, 'db', self.dbenv.dbname)
+        self.verify_db_setup()
         return True
 
     def exec_dml(self, dml):
@@ -52,9 +53,28 @@ class Driver(DbDriverMeta):
     def cursor(self):
         return self.db.cursor()
 
+    def verify_db_setup(self):
+        if not self.table_exists('gf_mdata_sync_stats'):
+            dml =   'create table gf_mdata_sync_stats (' +\
+                    '  id         serial primary key, '+\
+                    '  table_name varchar(50) not null, '+\
+                    '  inserts    numeric(8) not null, '+\
+                    '  updates    numeric(8) not null, '+\
+                    '  sync_start timestamp not null default now(), '+\
+                    '  sync_end   timestamp not null default now(), '+\
+                    '  sync_since timestamp not null)'
+            self.exec_dml(dml)
+
+    def insert_sync_stats(self, table_name, sync_start, sync_end, sync_since, inserts, updates):
+        cur = self.cursor
+        cur.execute('insert into gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) '+\
+                    'values (%s,%s,%s,%s,%s,%s)', [table_name, inserts, updates, sync_start, sync_end, sync_since])
+        self.db.commit()
+        cur.close()
+
     def bulk_load(self, tablename):
         if not os.path.isfile('/usr/bin/psql'):
-            raise Exception('psql not found. Please install postgresql client')
+            raise Exception('psql not found. Please install postgresql client to use bulk loading')
 
         exportfile = os.path.join(self.storagedir, 'export', tablename + '.exp.gz')
         cmd = r"\copy {} from program 'gzip -dc < {}'".format('"' + tablename + '"', exportfile)
@@ -83,6 +103,9 @@ class Driver(DbDriverMeta):
         namelist = []
         data = []
 
+        inserted = False
+        updated = False
+
         if len(orig_rec) == 0:
             table_fields = self.get_table_fields(table_name)
             existing_field_names = table_fields.keys()
@@ -98,6 +121,7 @@ class Driver(DbDriverMeta):
             if journal:
                 journal.write(bytes('i:{} --> {}\n'.format(sql, json.dumps(data, default=tools.json_serial)), 'utf-8'))
             cur.execute(sql, data)
+            inserted = True
         else:
             #
             # use only the changed field values
@@ -117,6 +141,7 @@ class Driver(DbDriverMeta):
 
             assert(pkey != None)
             sql = 'update "{}" set '.format(table_name)
+            sql = 'update "{}" set '.format(table_name)
             sets = []
             for name in namelist:
                 sets.append(name + r'=%s')
@@ -125,7 +150,8 @@ class Driver(DbDriverMeta):
             if journal:
                 journal.write(bytes('u:{} --> {}\n'.format(sql, json.dumps(data, default=tools.json_serial)), 'utf-8'))
             cur.execute(sql, data)
-
+            updated = True
+        return (inserted, updated)
 
     def commit(self):
         self.db.commit()
