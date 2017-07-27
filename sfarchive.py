@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
     if args.load and len(args.load) > 0:
         imp = SFImporter(context)
-        table_list = make_arg_list(args.imports)
+        table_list = make_arg_list(args.load)
         for tablename in table_list:
             print('loading {}'.format(tablename))
             count = imp.bulk_load(context.dbdriver, tablename)
