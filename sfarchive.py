@@ -56,6 +56,18 @@ if __name__ == '__main__':
 
     if args.sync is not None:
         exp = SFExporter(context)
+        #
+        # check for missing sobjects
+        #
+        existing_tables = set([t.tablename.lower() for t in context.dbdriver.get_db_tables()])
+        sf_tables = set([so['name'].lower() for so in schema_mgr.inspect()])
+        missing = sf_tables - existing_tables
+        if len(missing) > 0:
+            print('* The following SObjects are not being synchronized:')
+            for nm in missing:
+                print('*  {}'.format(nm))
+            print()
+
         if len(args.sync) > 0:
             final_args = make_arg_list(args.sync)
             exp.sync_tables(schema_mgr, final_args)

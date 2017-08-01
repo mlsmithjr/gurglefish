@@ -1,9 +1,9 @@
 import json
 import subprocess
 import os
-from subprocess import PIPE
 import string
 from typing import List
+import datetime
 
 import psycopg2
 import psycopg2.extras
@@ -67,6 +67,8 @@ class Driver(DbDriverMeta):
 
     def insert_sync_stats(self, table_name, sync_start, sync_end, sync_since, inserts, updates):
         cur = self.cursor
+        if not sync_since:
+            sync_since = datetime.date(year=1970, month=1, day=1)
         cur.execute('insert into gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) '+\
                     'values (%s,%s,%s,%s,%s,%s)', [table_name, inserts, updates, sync_start, sync_end, sync_since])
         self.db.commit()
