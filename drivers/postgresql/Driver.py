@@ -16,6 +16,9 @@ from db.mdatadb import ConfigEnv
 
 
 class Driver(DbDriverMeta):
+    last_table_name = None
+    last_table_fields = None
+
     driver_type = "postgresql"
 
     def connect(self, dbenv: ConfigEnv):
@@ -162,6 +165,8 @@ class Driver(DbDriverMeta):
         self.db.rollback()
 
     def get_table_fields(self, table_name):
+        if table_name == self.last_table_name:
+            return self.last_table_fields
         cur = self.new_map_cursor
         sql =   "select column_name, data_type, character_maximum_length, ordinal_position "+\
                 "from information_schema.columns "+\
@@ -170,10 +175,11 @@ class Driver(DbDriverMeta):
         cur.execute(sql.format(table_name))
         columns = cur.fetchall()
         cur.close()
-        result = dict()
+        self.last_table_name = table_name
+        self.last_table_fields = dict()
         for c in columns:
-            result[c['column_name']] = { 'column_name': c['column_name'], 'data_type': c['data_type'], 'character_maximum_length': c['character_maximum_length'], 'ordinal_position': c['ordinal_position']}
-        return result
+            self.last_table_fields[c['column_name']] = { 'column_name': c['column_name'], 'data_type': c['data_type'], 'character_maximum_length': c['character_maximum_length'], 'ordinal_position': c['ordinal_position']}
+        return self.last_table_fields
 
     def get_db_tables(self) -> List[GetDbTablesResult]:
         table_cursor = self.db.cursor()
@@ -257,7 +263,13 @@ class Driver(DbDriverMeta):
         print('TODO: drop_table')
         print('dropped ' + table_name)
 
-    def make_column(self, sobject_name:str, field:dict) -> (str,dict):
+    def make_column(self, sobject_name:str, field:dict) -> dict:
+        """
+            returns:
+                list(dict(
+                    fieldlen, dml, table_name, sobject_name, sobject_field, db_field, fieldtype
+                ))
+        """
         assert(sobject_name != None)
         assert(field != None)
 #        if field is None: return None,None
@@ -323,9 +335,8 @@ class Driver(DbDriverMeta):
             print(field)
             raise Exception('field {0} unknown type {1} for sobject {2}'.format(fieldname, fieldtype, sobject_name))
 
-        newfieldlist = [{'fieldlen': fieldlen, 'sql': sql, 'table_name': sobject_name, 'sobject_field': field['name'], 'db_field': fieldname, 'fieldtype': fieldtype}]
+        newfieldlist = [{'fieldlen': fieldlen, 'dml': sql, 'table_name': sobject_name, 'sobject_field': field['name'], 'db_field': fieldname, 'fieldtype': fieldtype}]
         return newfieldlist
-
 
     def make_create_table(self, fields, sobject_name):
         #if self.table_exists(sobject_name) or sobject_name in self.createstack:
@@ -335,7 +346,6 @@ class Driver(DbDriverMeta):
         sobject_name = sobject_name.lower()
         print('new sobject: ' + sobject_name)
         tablecols = []
-        objectcols = set()
         fieldlist = []
         #self.refs[sobject_name] = []
 
@@ -345,11 +355,13 @@ class Driver(DbDriverMeta):
                 continue
             for column in m:
                 fieldlist.append(column)
-                tablecols.append('  ' + column['db_field'] + ' ' + column['sql'])
-                objectcols.add(column['sobject_field'])
+                tablecols.append('  ' + column['db_field'] + ' ' + column['dml'])
         sql = ',\n'.join(tablecols)
-        select = 'select ' + ','.join(objectcols) + ' from ' + sobject_name
-        return sobject_name, fieldlist, 'create table "{0}" ( \n{1} )\n'.format(sobject_name, sql), select
+        return sobject_name, fieldlist, 'create table "{0}" ( \n{1} )\n'.format(sobject_name, sql)
+
+    def make_select_statement(self, field_names, sobject_name):
+        select = 'select ' + ','.join(field_names) + ' from ' + sobject_name
+        return select
 
     def getMaxTimestamp(self, tablename):
         col_cursor = self.db.cursor()

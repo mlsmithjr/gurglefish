@@ -128,12 +128,38 @@ class SchemaManager:
             new_sobject_name = new_sobject_name.lower()
 
             fields = self.sfclient.getFieldList(new_sobject_name)
-            table_name, fieldmap, sql, select = self.driver.make_create_table(fields, new_sobject_name)
+            table_name, fieldmap, create_table_dml = self.driver.make_create_table(fields, new_sobject_name)
+            select = self.make_select_statement([field['sobject_name'] for field in fieldmap], new_sobject_name)
+
             parser = self.driver.make_transformer(new_sobject_name, table_name, fieldmap)
 
             self.filemgr.save_sobject_fields(new_sobject_name, fields)
             self.filemgr.save_sobject_transformer(new_sobject_name, parser)
             self.filemgr.save_sobject_map(new_sobject_name, fieldmap)
-            self.filemgr.save_table_create(new_sobject_name, sql + ';\n\n')
+            self.filemgr.save_table_create(new_sobject_name, create_table_dml + ';\n\n')
             self.filemgr.save_sobject_query(new_sobject_name, select)
+
+    def update_sobject(self, sobject_name):
+        sobject_name = sobject_name.lower()
+
+        sobj_columns = self.sfclient.getFieldMap(sobject_name)
+        table_columns = self.driver.get_db_columns(sobject_name)
+        sobj_field_names = sobj_columns.keys()
+        table_field_names = [tbl['column_name'] for tbl in table_columns]
+        new_fields = sobj_field_names - table_field_names
+        dropped_fields = table_field_names - sobj_field_names
+        if len(new_fields) > 0:
+            fieldmap = self.filemgr.get_sobject_map(sobject_name)
+            new_field_defs = [sobj_columns[f] for f in new_fields]
+            newfieldmap = self.driver.alter_table(new_field_defs, sobject_name)
+            fieldmap.append(newfieldmap)
+            parser = self.driver.make_transformer(sobject_name, sobject_name, fieldmap)
+
+            self.filemgr.save_sobject_fields(sobject_name, sobj_columns.values())
+            self.filemgr.save_sobject_transformer(sobject_name, parser)
+            self.filemgr.save_sobject_map(sobject_name, fieldmap)
+
+        if len(dropped_fields) > 0:
+            pass
+
 

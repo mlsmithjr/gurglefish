@@ -83,6 +83,10 @@ class SFClient:
         #CaptureManager.save(self._bucket, sobject_name, fieldlist)
         return fieldlist
 
+    def getFieldMap(self, sobject_name):
+        thelist = self.getfieldList(sobject_name)
+        return dict((f['name'], f) for f in thelist)
+
     def fetchRecord(self, objectname, recid, fieldlist):
         fieldstring = ','.join(fieldlist)
         url = 'sobjects/{0}/{1}'.format(objectname, recid)
