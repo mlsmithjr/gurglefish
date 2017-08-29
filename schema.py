@@ -129,7 +129,7 @@ class SchemaManager:
 
             fields = self.sfclient.getFieldList(new_sobject_name)
             table_name, fieldmap, create_table_dml = self.driver.make_create_table(fields, new_sobject_name)
-            select = self.make_select_statement([field['sobject_name'] for field in fieldmap], new_sobject_name)
+            select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap], new_sobject_name)
 
             parser = self.driver.make_transformer(new_sobject_name, table_name, fieldmap)
 

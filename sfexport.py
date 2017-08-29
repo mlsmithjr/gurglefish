@@ -112,7 +112,7 @@ class SFExporter:
             print('{}: exporting {} records: 0%'.format(sobject_name, totalSize), end='\r', flush=True)
         else:
             print('{}: exporting {} records'.format(sobject_name, totalSize))
-        with gzip.open(os.path.join(self.storagedir, sobject_name + '.exp.gz'), 'wb', compresslevel=9) as export:
+        with gzip.open(os.path.join(self.storagedir, sobject_name + '.exp.gz'), 'wb', compresslevel=6) as export:
             for rec in self.context.sfclient.query(soql):
                 trec = xlate_handler.parse(rec)
                 parts = []
