@@ -84,7 +84,7 @@ class SFClient:
         return fieldlist
 
     def getFieldMap(self, sobject_name):
-        thelist = self.getfieldList(sobject_name)
+        thelist = self.getFieldList(sobject_name)
         return dict((f['name'], f) for f in thelist)
 
     def fetchRecord(self, objectname, recid, fieldlist):

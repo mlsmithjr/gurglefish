@@ -44,6 +44,10 @@ class SFExporter:
         for table in tablelist:
             tablename = table['name']
             print('{}:'.format(tablename))
+
+            # check for new or dropped columns and process accordingly
+            schema_mgr.update_sobject(tablename)
+
             tstamp = self.context.dbdriver.getMaxTimestamp(tablename)
             self.etl(self.context.filemgr.get_sobject_query(tablename), tablename, timestamp=tstamp)
 

@@ -144,22 +144,26 @@ class SchemaManager:
 
         sobj_columns = self.sfclient.getFieldMap(sobject_name)
         table_columns = self.driver.get_db_columns(sobject_name)
-        sobj_field_names = sobj_columns.keys()
-        table_field_names = [tbl['column_name'] for tbl in table_columns]
+        sobj_field_names = set([k.lower() for k in sobj_columns.keys()])
+        table_field_names = set([tbl['column_name'] for tbl in table_columns])
         new_fields = sobj_field_names - table_field_names
         dropped_fields = table_field_names - sobj_field_names
         if len(new_fields) > 0:
-            fieldmap = self.filemgr.get_sobject_map(sobject_name)
             new_field_defs = [sobj_columns[f] for f in new_fields]
-            newfieldmap = self.driver.alter_table(new_field_defs, sobject_name)
-            fieldmap.append(newfieldmap)
-            parser = self.driver.make_transformer(sobject_name, sobject_name, fieldmap)
+            newfieldmap = self.driver.alter_table_add_columns(new_field_defs, sobject_name)
 
-            self.filemgr.save_sobject_fields(sobject_name, sobj_columns.values())
-            self.filemgr.save_sobject_transformer(sobject_name, parser)
+            self.driver.maintain_indexes(sobject_name, new_field_defs)
+
+            fieldmap = self.filemgr.get_sobject_map(sobject_name)
+            fieldmap.append(newfieldmap)
             self.filemgr.save_sobject_map(sobject_name, fieldmap)
 
+            parser = self.driver.make_transformer(sobject_name, sobject_name, fieldmap)
+            self.filemgr.save_sobject_transformer(sobject_name, parser)
+
+            self.filemgr.save_sobject_fields(sobject_name, sobj_columns.values())
+
         if len(dropped_fields) > 0:
-            pass
+            self.driver.alter_table_drop_columns(sobject_name, dropped_fields)
 
 

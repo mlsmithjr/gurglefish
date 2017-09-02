@@ -23,12 +23,21 @@
     <autoscroll-to-editor value="false" />
     <autoscroll-from-editor value="true" />
     <show-object-properties value="true" />
-    <loaded-nodes />
+    <loaded-nodes>
+      <connection connection-id="c24947fb-38fa-479d-91b9-a13ff92636e2">
+        <schema name="information_schema" object-types="column, constraint, function, sequence, table, dataset trigger, view" />
+        <schema name="pg_catalog" object-types="function" />
+        <schema name="public" object-types="column, constraint, function, index, sequence, table, dataset trigger, view" />
+      </connection>
+    </loaded-nodes>
   </component>
   <component name="DBNavigator.Project.DatabaseConsoleManager">
     <connection id="c24947fb-38fa-479d-91b9-a13ff92636e2">
       <console name="fte0" type="STANDARD"><![CDATA[desc information_schema.columns]]></console>
     </connection>
+  </component>
+  <component name="DBNavigator.Project.DatasetFilterManager">
+    <filter-list connection-id="c24947fb-38fa-479d-91b9-a13ff92636e2" dataset="public.configuration__c" active-filter-id="" />
   </component>
   <component name="DBNavigator.Project.EditorStateManager">
     <last-used-providers />

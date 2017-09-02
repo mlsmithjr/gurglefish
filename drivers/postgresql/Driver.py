@@ -242,9 +242,9 @@ class Driver(DbDriverMeta):
         cur.close()
 
     def get_db_columns(self, table_name):
-        col_cursor = self.db.cursor()
+        col_cursor = self.new_map_cursor
         col_cursor.execute(
-            "select * from information_schema where table_name=%s " + \
+            "select * from information_schema.columns where table_name=%s " + \
             "and table_schema='public' " + \
             "order by column_name", (table_name,))
         cols = col_cursor.fetchall()
@@ -337,6 +337,37 @@ class Driver(DbDriverMeta):
 
         newfieldlist = [{'fieldlen': fieldlen, 'dml': sql, 'table_name': sobject_name, 'sobject_field': field['name'], 'db_field': fieldname, 'fieldtype': fieldtype}]
         return newfieldlist
+
+    def alter_table_add_columns(self, new_field_defs, sobject_name):
+        ddl_template = 'ALTER TABLE "{}" ADD COLUMN {} {}'
+        cur = self.db.cursor()
+        for field in new_field_defs:
+            col_def = self.make_column(sobject_name, field)
+            col = col_def[0]
+            ddl = ddl_template.format(sobject_name, col['db_field'], col['dml'])
+            cur.execute(ddl)
+        self.db.commit()
+        cur.close()
+
+    def alter_table_drop_columns(self, drop_field_names, sobject_name):
+        ddl_template = 'ALTER TABLE "{}" DROP COLUMN {}'
+        cur = self.db.cursor()
+        for field in drop_field_names:
+            ddl = ddl_template.format(sobject_name, field)
+            cur.execute(ddl)
+        self.db.commit()
+        cur.close()
+
+    def maintain_indexes(self, sobject_name, field_defs):
+        ddl_template = 'CREATE INDEX IF NOT EXISTS {}_{} ON "{}" ({})'
+        cur = self.db.cursor()
+        for field in field_defs:
+            if field['externalId'] or field['idLookup']:
+                ddl = ddl_template.format(sobject_name, field['name'], sobject_name, field['name'])
+                cur.execute(ddl)
+        self.db.commit()
+        cur.close()
+
 
     def make_create_table(self, fields, sobject_name):
         #if self.table_exists(sobject_name) or sobject_name in self.createstack:
