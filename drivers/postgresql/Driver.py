@@ -341,13 +341,16 @@ class Driver(DbDriverMeta):
     def alter_table_add_columns(self, new_field_defs, sobject_name):
         ddl_template = 'ALTER TABLE "{}" ADD COLUMN {} {}'
         cur = self.db.cursor()
+        newcols = []
         for field in new_field_defs:
             col_def = self.make_column(sobject_name, field)
             col = col_def[0]
             ddl = ddl_template.format(sobject_name, col['db_field'], col['dml'])
             cur.execute(ddl)
+            newcols.append(col)
         self.db.commit()
         cur.close()
+        return newcols
 
     def alter_table_drop_columns(self, drop_field_names, sobject_name):
         ddl_template = 'ALTER TABLE "{}" DROP COLUMN {}'

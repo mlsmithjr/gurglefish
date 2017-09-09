@@ -155,13 +155,14 @@ class SchemaManager:
             self.driver.maintain_indexes(sobject_name, new_field_defs)
 
             fieldmap = self.filemgr.get_sobject_map(sobject_name)
-            fieldmap.append(newfieldmap)
+            fieldmap.extend(newfieldmap)
             self.filemgr.save_sobject_map(sobject_name, fieldmap)
-
+            select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap], sobject_name)
+            self.filemgr.save_sobject_query(sobject_name, select)
             parser = self.driver.make_transformer(sobject_name, sobject_name, fieldmap)
             self.filemgr.save_sobject_transformer(sobject_name, parser)
 
-            self.filemgr.save_sobject_fields(sobject_name, sobj_columns.values())
+            self.filemgr.save_sobject_fields(sobject_name, [f for f in sobj_columns.values()])
 
         if len(dropped_fields) > 0:
             self.driver.alter_table_drop_columns(sobject_name, dropped_fields)
