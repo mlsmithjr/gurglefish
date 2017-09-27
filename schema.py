@@ -165,11 +165,15 @@ class SchemaManager:
             self.filemgr.save_sobject_fields(sobject_name, [f for f in sobj_columns.values()])
 
         if len(dropped_fields) > 0:
-            self.driver.alter_table_drop_columns(dropped_fields, sobject_name)
             fieldmap = self.filemgr.get_sobject_map(sobject_name)
-            for item in fieldmap[:]:
+            newlist = list()
+            for item in fieldmap:
                 if item['sobject_field'] in dropped_fields:
-                    del fieldmap[item]
+                    pass
+                else:
+                    newlist.append(item)
+            fieldmap = newlist
+            self.driver.alter_table_drop_columns(dropped_fields, sobject_name)
             self.filemgr.save_sobject_map(sobject_name, fieldmap)
             select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap], sobject_name)
             self.filemgr.save_sobject_query(sobject_name, select)

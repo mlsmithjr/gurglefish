@@ -23,7 +23,12 @@
     <autoscroll-to-editor value="false" />
     <autoscroll-from-editor value="true" />
     <show-object-properties value="true" />
-    <loaded-nodes />
+    <loaded-nodes>
+      <connection connection-id="c24947fb-38fa-479d-91b9-a13ff92636e2">
+        <schema name="pg_catalog" object-types="function" />
+        <schema name="public" object-types="column, constraint, function, index, sequence, table, dataset trigger, view" />
+      </connection>
+    </loaded-nodes>
   </component>
   <component name="DBNavigator.Project.DatabaseConsoleManager">
     <connection id="c24947fb-38fa-479d-91b9-a13ff92636e2">
@@ -31,7 +36,11 @@
     </connection>
   </component>
   <component name="DBNavigator.Project.DatasetFilterManager">
-    <filter-list connection-id="c24947fb-38fa-479d-91b9-a13ff92636e2" dataset="public.configuration__c" active-filter-id="" />
+    <filter-list connection-id="c24947fb-38fa-479d-91b9-a13ff92636e2" dataset="public.configuration__c" active-filter-id="EMPTY_FILTER">
+      <filter id="10195e9c-b319-49c3-967f-fefbc4fe9a47" name="Filter 1" temporary="false" custom-name="false" type="basic" join-type="AND">
+        <condition column="id" operator="=" value="" active="true" />
+      </filter>
+    </filter-list>
   </component>
   <component name="DBNavigator.Project.EditorStateManager">
     <last-used-providers />
