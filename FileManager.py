@@ -55,6 +55,18 @@ class FileManager(object):
         with open(filename, 'r') as jsonfile:
             return json.load(jsonfile)
 
+    def get_config(self):
+        try:
+            with open(os.path.join(self.basedir, 'db', 'config.json'), 'r') as configfile:
+                return json.load(configfile)
+        except:
+            pass
+        return None
+
+    def save_config(self, configmap):
+        with open(os.path.join(self.basedir, 'db', 'config.json'), 'w') as configfile:
+            json.dump(configmap, configfile, indent=4)
+
     def get_sobject_map(self, sobject_name):
         with open(os.path.join(self.schemadir, sobject_name, '{}_map.json'.format(sobject_name)), 'r') as mapfile:
             return json.load(mapfile)

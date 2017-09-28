@@ -40,6 +40,7 @@ if __name__ == '__main__':
     parser.add_argument("--export", help="export full sobject data", nargs="+", metavar="object|@file")
     parser.add_argument("--load", help="load/import full table data, table must be empty", nargs="*", metavar="object|@file")
     parser.add_argument("--inspect", help="inspect objects", nargs="*", metavar="object|@file")
+    parser.add_argument("--init", help="initialize configuration", nargs="*")
     args = parser.parse_args()
 
     envname = args.env
@@ -47,6 +48,18 @@ if __name__ == '__main__':
     #    env, dbmgr, sf = tools.setup_env(envname)
     context = tools.setup_env(envname)
     schema_mgr = SchemaManager(context)
+
+
+    if args.init is not None:
+        sobject_list = schema_mgr.inspect()
+        sobjectconfig = []
+        for sobject in sobject_list:
+            name = sobject['name']
+            node = { 'name': name, 'auto-drop-columns': True, 'auto-create-columns': True, 'sync-schedule': 'run' }
+            sobjectconfig.append(node)
+        configmap = {'configuration': { 'sobjects': sobjectconfig }}
+        context.filemgr.save_config(configmap)
+        print('config.json created')
 
     if args.inspect is not None:
         thelist = schema_mgr.inspect()
