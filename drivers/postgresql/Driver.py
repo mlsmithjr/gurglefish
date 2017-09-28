@@ -18,6 +18,7 @@ from db.mdatadb import ConfigEnv
 class Driver(DbDriverMeta):
     last_table_name = None
     last_table_fields = None
+    schema_name = None
 
     driver_type = "postgresql"
 
@@ -28,6 +29,7 @@ class Driver(DbDriverMeta):
         self._bucket = 'db_' + dbenv.dbname
         self.storagedir = os.path.join(config.storagedir, 'db', self.dbenv.dbname)
         self.verify_db_setup()
+        self.schema_name = dbenv.schema
         return True
 
     def exec_dml(self, dml):
@@ -58,22 +60,22 @@ class Driver(DbDriverMeta):
 
     def verify_db_setup(self):
         if not self.table_exists('gf_mdata_sync_stats'):
-            dml =   'create table gf_mdata_sync_stats (' +\
+            dml =   'create table {0}.gf_mdata_sync_stats (' +\
                     '  id         serial primary key, '+\
                     '  table_name varchar(50) not null, '+\
                     '  inserts    numeric(8) not null, '+\
                     '  updates    numeric(8) not null, '+\
                     '  sync_start timestamp not null default now(), '+\
                     '  sync_end   timestamp not null default now(), '+\
-                    '  sync_since timestamp not null)'
+                    '  sync_since timestamp not null)'.format(self.schema_name)
             self.exec_dml(dml)
 
     def insert_sync_stats(self, table_name, sync_start, sync_end, sync_since, inserts, updates):
         cur = self.cursor
         if not sync_since:
             sync_since = datetime.date(year=1970, month=1, day=1)
-        cur.execute('insert into gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) '+\
-                    'values (%s,%s,%s,%s,%s,%s)', [table_name, inserts, updates, sync_start, sync_end, sync_since])
+        cur.execute('insert into {0}.gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) '+\
+                    'values (%s,%s,%s,%s,%s,%s)'.format(self.schema_name), [table_name, inserts, updates, sync_start, sync_end, sync_since])
         self.db.commit()
         cur.close()
 
@@ -82,7 +84,7 @@ class Driver(DbDriverMeta):
             raise Exception('psql not found. Please install postgresql client to use bulk loading')
 
         exportfile = os.path.join(self.storagedir, 'export', tablename + '.exp.gz')
-        cmd = r"\copy {} from program 'gzip -dc < {}'".format('"' + tablename + '"', exportfile)
+        cmd = r"\copy {} from program 'gzip -dc < {}'".format(self.fq_table(tablename), exportfile)
         cmdargs = ['/usr/bin/psql', '-h', self.dbhost, '-d', self.dbname, '-c', cmd]
         try:
             outputbytes = subprocess.check_output(cmdargs)
@@ -96,7 +98,7 @@ class Driver(DbDriverMeta):
     def upsert(self, cur, table_name, trec : dict, journal = None):
         assert('Id' in trec)
 
-        cur.execute("select * from \"{}\" where id = '{}'".format(table_name, trec['Id']))
+        cur.execute("select * from \"{}\" where id = '{}'".format(self.fq_table(table_name), trec['Id']))
         tmp_rec = cur.fetchone()
         orig_rec = {}
         index = 0
@@ -122,7 +124,7 @@ class Driver(DbDriverMeta):
 
             valueplaceholders = ','.join('%s' for i in range(len(data)))
             fieldnames = ','.join(namelist)
-            sql = 'insert into "{0}" ({1}) values ({2});'.format(table_name, fieldnames, valueplaceholders)
+            sql = 'insert into "{0}" ({1}) values ({2});'.format(self.fq_table(table_name), fieldnames, valueplaceholders)
             if journal:
                 journal.write(bytes('i:{} --> {}\n'.format(sql, json.dumps(data, default=tools.json_serial)), 'utf-8'))
             cur.execute(sql, data)
@@ -145,8 +147,8 @@ class Driver(DbDriverMeta):
                 #
 
             assert(pkey != None)
-            sql = 'update "{}" set '.format(table_name)
-            sql = 'update "{}" set '.format(table_name)
+            sql = 'update "{}" set '.format(self.fq_table(table_name))
+            sql = 'update "{}" set '.format(self.fq_table(table_name))
             sets = []
             for name in namelist:
                 sets.append(name + r'=%s')
@@ -345,7 +347,7 @@ class Driver(DbDriverMeta):
         for field in new_field_defs:
             col_def = self.make_column(sobject_name, field)
             col = col_def[0]
-            ddl = ddl_template.format(sobject_name, col['db_field'], col['dml'])
+            ddl = ddl_template.format(self.fq_table(sobject_name), col['db_field'], col['dml'])
             cur.execute(ddl)
             newcols.append(col)
         self.db.commit()
@@ -356,7 +358,7 @@ class Driver(DbDriverMeta):
         ddl_template = 'ALTER TABLE "{}" DROP COLUMN {}'
         cur = self.db.cursor()
         for field in drop_field_names:
-            ddl = ddl_template.format(sobject_name, field)
+            ddl = ddl_template.format(self.fq_table(sobject_name), field)
             cur.execute(ddl)
         self.db.commit()
         cur.close()
@@ -391,15 +393,15 @@ class Driver(DbDriverMeta):
                 fieldlist.append(column)
                 tablecols.append('  ' + column['db_field'] + ' ' + column['dml'])
         sql = ',\n'.join(tablecols)
-        return sobject_name, fieldlist, 'create table "{0}" ( \n{1} )\n'.format(sobject_name, sql)
+        return sobject_name, fieldlist, 'create table "{2}"."{0}" ( \n{1} )\n'.format(self.fq_table(sobject_name), sql, self.schema_name)
 
     def make_select_statement(self, field_names, sobject_name):
-        select = 'select ' + ','.join(field_names) + ' from ' + sobject_name
+        select = 'select ' + ','.join(field_names) + ' from ' + self.fq_table(sobject_name)
         return select
 
     def getMaxTimestamp(self, tablename):
         col_cursor = self.db.cursor()
-        col_cursor.execute('select max(lastmodifieddate) from "' + tablename + '"')
+        col_cursor.execute('select max(lastmodifieddate) from "' + self.fq_table(tablename) + '"')
         stamp, = col_cursor.fetchone()
         col_cursor.close()
         return stamp
@@ -451,3 +453,6 @@ class Driver(DbDriverMeta):
             parser += '  ' + p_parser
         parser += '  return result'
         return parser
+
+    def fq_table(self, tablename):
+        return '"{}"."{}"'.format(self.schema_name, tablename)

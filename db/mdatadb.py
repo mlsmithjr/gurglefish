@@ -19,6 +19,17 @@ class ConfigEnv(object):
         self.fields['id'] = i
 
     @property
+    def schema(self):
+        s = self.fields['schema']
+        if s is None or len(s) == 0:
+            s = 'public'
+        return s
+
+    @schema.setter
+    def schema_set(self, name):
+        self.fields['schema'] = name
+
+    @property
     def login(self):
         return self.fields['login']
 
