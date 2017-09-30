@@ -23,12 +23,7 @@
     <autoscroll-to-editor value="false" />
     <autoscroll-from-editor value="true" />
     <show-object-properties value="true" />
-    <loaded-nodes>
-      <connection connection-id="c24947fb-38fa-479d-91b9-a13ff92636e2">
-        <schema name="pg_catalog" object-types="function" />
-        <schema name="public" object-types="column, constraint, function, index, sequence, table, dataset trigger, view" />
-      </connection>
-    </loaded-nodes>
+    <loaded-nodes />
   </component>
   <component name="DBNavigator.Project.DatabaseConsoleManager">
     <connection id="c24947fb-38fa-479d-91b9-a13ff92636e2">
@@ -226,6 +221,7 @@
     <dataset-grid-settings>
       <general>
         <enable-zooming value="true" />
+        <enable-column-tooltip value="true" />
       </general>
       <sorting>
         <nulls-first value="true" />
@@ -452,6 +448,7 @@
         <debug-execution-timeout value="600" />
         <focus-result value="false" />
         <prompt-execution value="false" />
+        <target-connection value="ASK" />
       </statement-execution>
       <script-execution>
         <command-line-interfaces />

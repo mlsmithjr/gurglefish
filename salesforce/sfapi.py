@@ -1,13 +1,12 @@
 import logging
 import json
 import operator
+from typing import List
 
 import requests
-from db.Capture import CaptureManager
-
 
 MAX_BATCH_SIZE=100
-_API_VERSION = '34.0'
+_API_VERSION = '40.0'
 
 
 class SFError(Exception):
@@ -56,7 +55,7 @@ class SFClient:
         pass
 
 
-    def getSobject(self, name):
+    def get_sobject_definition(self, name):
         sobject_doc = self._invokeGetREST('sobjects/{}/describe'.format(name), {})
         return sobject_doc
 
@@ -74,7 +73,69 @@ class SFClient:
         #CaptureManager.save(self._bucket, 'sobjectList', sobjectList)
         return sobjectList
 
-    def getFieldList(self, sobject_name):
+    def get_field_list(self, sobject_name) -> List:
+        """
+
+        :param sobject_name:
+        :return: list of dictionaries.
+        Ex:
+          {
+            "autoNumber": false,
+            "byteLength": 18,
+            "calculated": false,
+            "calculatedFormula": null,
+            "cascadeDelete": false,
+            "caseSensitive": false,
+            "controllerName": null,
+            "createable": true,
+            "custom": false,
+            "defaultValue": null,
+            "defaultValueFormula": null,
+            "defaultedOnCreate": true,
+            "dependentPicklist": false,
+            "deprecatedAndHidden": false,
+            "digits": 0,
+            "displayLocationInDecimal": false,
+            "encrypted": false,
+            "externalId": false,
+            "extraTypeInfo": null,
+            "filterable": true,
+            "filteredLookupInfo": null,
+            "groupable": true,
+            "highScaleNumber": false,
+            "htmlFormatted": false,
+            "idLookup": false,
+            "inlineHelpText": null,
+            "label": "Created By ID",
+            "length": 18,
+            "mask": null,
+            "maskType": null,
+            "name": "CreatedById",
+            "nameField": false,
+            "namePointing": false,
+            "nillable": false,
+            "permissionable": false,
+            "picklistValues": [],
+            "precision": 0,
+            "queryByDistance": false,
+            "referenceTargetField": null,
+            "referenceTo": [
+              "User"
+            ],
+            "relationshipName": "CreatedBy",
+            "relationshipOrder": null,
+            "restrictedDelete": false,
+            "restrictedPicklist": false,
+            "scale": 0,
+            "soapType": "tns:ID",
+            "sortable": true,
+            "type": "reference",
+            "unique": false,
+            "updateable": false,
+            "writeRequiresMasterRead": false
+          }
+
+        """
         #if CaptureManager.exists(self._bucket, sobject_name):
         #    return CaptureManager.fetch(self._bucket, sobject_name)
         fielddef = self._invokeGetREST('sobjects/%s/describe/' % (sobject_name,), {})
@@ -83,9 +144,9 @@ class SFClient:
         #CaptureManager.save(self._bucket, sobject_name, fieldlist)
         return fieldlist
 
-    def getFieldMap(self, sobject_name):
-        thelist = self.getFieldList(sobject_name)
-        return dict((f['name'], f) for f in thelist)
+    def get_field_map(self, sobject_name):
+        thelist = self.get_field_list(sobject_name)
+        return dict((f['name'].lower(), f) for f in thelist)
 
     def fetchRecord(self, objectname, recid, fieldlist):
         fieldstring = ','.join(fieldlist)

@@ -85,7 +85,7 @@ class ValidateSObjectMappings(Resource):
 
         sfc = SFClient()
         sfc.login(env.consumer_key, env.consumer_secret, env.login, env.password, env.authurl)
-        sobjectFields = sfc.getFieldList(sobjectName)
+        sobjectFields = sfc.get_field_list(sobjectName)
         fieldDict = dict([ (field['name'], field) for field in sobjectFields ])
         available_fields = set([field['name'] for field in sobjectFields])
 
@@ -132,7 +132,7 @@ class GetSObjectMappings(Resource):
 
         sfc = SFClient()
         sfc.login(env.consumer_key, env.consumer_secret, env.login, env.password, env.authurl)
-        sobjectFields = sfc.getFieldList(sobjectName)
+        sobjectFields = sfc.get_field_list(sobjectName)
         fieldDict = dict([ (field['name'], field) for field in sobjectFields ])
         available_fields = set([field['name'] for field in sobjectFields])
 
@@ -190,7 +190,7 @@ class SaveMappings(Resource):
             #
             _, mapped_table_fields = driver.get_field_map(change.sobject)
             mapped_columns = [c['sobject_field'] for c in mapped_table_fields]
-            sobjectFields = sfc.getFieldList(change.sobject)
+            sobjectFields = sfc.get_field_list(change.sobject)
             sobject_field_map = dict([ (field['name'], field) for field in sobjectFields ])
 
             for field in change.fields:

@@ -1,9 +1,10 @@
-import json
+
 import os
 
 from context import Context
 
 __author__ = 'mark'
+
 
 
 class SchemaManager:
@@ -73,7 +74,7 @@ class SchemaManager:
         docs = []
         for name in names:
             try:
-                doc = self.sfclient.getSobject(name)
+                doc = self.sfclient.get_sobject_definition(name)
                 docs.append(doc)
             except Exception as ex:
                 print('Unable to retrieve {}, skipping'.format(name))
@@ -120,14 +121,14 @@ class SchemaManager:
 
         # first check for new sobjects
         sobject_names = set([so['name'].lower() for so in solist])
-        table_names = set([table.tablename for table in self.driver.get_db_tables()])
-        new_names = sobject_names - table_names
+#        table_names = set([table.tablename for table in self.driver.get_db_tables()])
+#        new_names = sobject_names - table_names
 
-        #with open(os.path.join(self.storagedir, 'schema-new.sql'), 'w') as ts:
-        for new_sobject_name in sorted(new_names):
+#        for new_sobject_name in sorted(new_names):
+        for new_sobject_name in sorted(sobject_names):
             new_sobject_name = new_sobject_name.lower()
 
-            fields = self.sfclient.getFieldList(new_sobject_name)
+            fields = self.sfclient.get_field_list(new_sobject_name)
             table_name, fieldmap, create_table_dml = self.driver.make_create_table(fields, new_sobject_name)
             select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap], new_sobject_name)
 
@@ -142,8 +143,12 @@ class SchemaManager:
     def update_sobject(self, sobject_name):
         sobject_name = sobject_name.lower()
 
-        sobj_columns = self.sfclient.getFieldMap(sobject_name)
+        sobj_columns = self.sfclient.get_field_map(sobject_name)
         table_columns = self.driver.get_db_columns(sobject_name)
+
+        #
+        # check for added/dropped columns
+        #
         sobj_field_names = set([k.lower() for k in sobj_columns.keys()])
         table_field_names = set([tbl['column_name'] for tbl in table_columns])
         new_fields = sobj_field_names - table_field_names

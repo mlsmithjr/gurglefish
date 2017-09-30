@@ -62,7 +62,7 @@ class Driver(DbDriverMeta):
         if not self.table_exists('gf_mdata_sync_stats'):
             dml =   'create table {0}.gf_mdata_sync_stats (' +\
                     '  id         serial primary key, '+\
-                    '  table_name varchar(50) not null, '+\
+                    '  table_name text not null, '+\
                     '  inserts    numeric(8) not null, '+\
                     '  updates    numeric(8) not null, '+\
                     '  sync_start timestamp not null default now(), '+\
@@ -74,8 +74,11 @@ class Driver(DbDriverMeta):
         cur = self.cursor
         if not sync_since:
             sync_since = datetime.date(year=1970, month=1, day=1)
-        cur.execute('insert into {0}.gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) '+\
-                    'values (%s,%s,%s,%s,%s,%s)'.format(self.schema_name), [table_name, inserts, updates, sync_start, sync_end, sync_since])
+        sql = "insert into {}".format(self.schema_name)
+        sql += ".gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) "+\
+                    "values (%s,%s,%s,%s,%s,%s)".format(self.schema_name)
+
+        cur.execute(sql, [table_name, inserts, updates, sync_start, sync_end, sync_since])
         self.db.commit()
         cur.close()
 
@@ -98,7 +101,7 @@ class Driver(DbDriverMeta):
     def upsert(self, cur, table_name, trec : dict, journal = None):
         assert('Id' in trec)
 
-        cur.execute("select * from \"{}\" where id = '{}'".format(self.fq_table(table_name), trec['Id']))
+        cur.execute("select * from {} where id = '{}'".format(self.fq_table(table_name), trec['Id']))
         tmp_rec = cur.fetchone()
         orig_rec = {}
         index = 0
@@ -124,7 +127,7 @@ class Driver(DbDriverMeta):
 
             valueplaceholders = ','.join('%s' for i in range(len(data)))
             fieldnames = ','.join(namelist)
-            sql = 'insert into "{0}" ({1}) values ({2});'.format(self.fq_table(table_name), fieldnames, valueplaceholders)
+            sql = 'insert into {0} ({1}) values ({2});'.format(self.fq_table(table_name), fieldnames, valueplaceholders)
             if journal:
                 journal.write(bytes('i:{} --> {}\n'.format(sql, json.dumps(data, default=tools.json_serial)), 'utf-8'))
             cur.execute(sql, data)
@@ -147,8 +150,8 @@ class Driver(DbDriverMeta):
                 #
 
             assert(pkey != None)
-            sql = 'update "{}" set '.format(self.fq_table(table_name))
-            sql = 'update "{}" set '.format(self.fq_table(table_name))
+            sql = 'update {} set '.format(self.fq_table(table_name))
+            sql = 'update {} set '.format(self.fq_table(table_name))
             sets = []
             for name in namelist:
                 sets.append(name + r'=%s')
@@ -232,7 +235,7 @@ class Driver(DbDriverMeta):
         return found
 
     def add_column(self, sobject_name:string, fielddef:dict):
-        (sql, d) = self.make_column(sobject_name, fielddef)
+        d = self.make_column(sobject_name, fielddef)
         self.add_mapped_field(sobject_name, d['table_name'], d['sobject_field'], d['db_field'], d['fieldtype'])
 
     def add_mapped_field(self, sobject_name, table_name, sobject_field, db_field, fieldtype):
@@ -280,11 +283,10 @@ class Driver(DbDriverMeta):
         fieldname = field['name']
         fieldtype = field['type']
         fieldlen = field['length']
-        if fieldtype in (
-        'picklist', 'multipicklist', 'string', 'textarea', 'email', 'phone', 'url', 'encryptedstring'):
+        if fieldtype in ('picklist', 'multipicklist', 'email', 'phone', 'url'):
             sql += 'varchar ({0}) '.format(fieldlen)
-        elif fieldtype == 'combobox':
-            sql += 'varchar (200) '
+        elif fieldtype in ('string', 'encryptedstring', 'textarea', 'combobox'):
+            sql += 'text '
         elif fieldtype == 'datetime':
             sql += 'timestamp '
         elif fieldtype == 'date':
@@ -325,13 +327,13 @@ class Driver(DbDriverMeta):
             prefix = field['name']
             if field['name'].endswith('Address'):
                 prefix = prefix[0:-7]
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'varchar(200) ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'city', 'db_field': prefix+'City', 'fieldtype': 'address'})
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'varchar(50) ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'country', 'db_field': prefix+'Country', 'fieldtype': 'address'})
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'varchar(20) ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'postalCode', 'db_field': prefix+'PostalCode', 'fieldtype': 'address'})
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'varchar(100) ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'state', 'db_field': prefix+'State', 'fieldtype': 'address'})
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'varchar(200) ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'street', 'db_field': prefix+'Street', 'fieldtype': 'address'})
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'varchar(20) ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'longitude', 'db_field': prefix+'Longitude', 'fieldtype': 'address'})
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'varchar(20) ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'latitude', 'db_field': prefix+'Latitude', 'fieldtype': 'address'})
+            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'city', 'db_field': prefix+'City', 'fieldtype': 'address'})
+            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'country', 'db_field': prefix+'Country', 'fieldtype': 'address'})
+            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'postalCode', 'db_field': prefix+'PostalCode', 'fieldtype': 'address'})
+            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'state', 'db_field': prefix+'State', 'fieldtype': 'address'})
+            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'street', 'db_field': prefix+'Street', 'fieldtype': 'address'})
+            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'longitude', 'db_field': prefix+'Longitude', 'fieldtype': 'address'})
+            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'latitude', 'db_field': prefix+'Latitude', 'fieldtype': 'address'})
             return newfieldlist
         else:
             print(field)
@@ -341,13 +343,17 @@ class Driver(DbDriverMeta):
         return newfieldlist
 
     def alter_table_add_columns(self, new_field_defs, sobject_name):
-        ddl_template = 'ALTER TABLE "{}" ADD COLUMN {} {}'
+        ddl_template = 'ALTER TABLE {} ADD COLUMN {} {}'
         cur = self.db.cursor()
         newcols = []
         for field in new_field_defs:
             col_def = self.make_column(sobject_name, field)
+            if col_def is None:
+                print('unsupported column type for {} - skipped'.format(field['name']))
+                continue
             col = col_def[0]
             ddl = ddl_template.format(self.fq_table(sobject_name), col['db_field'], col['dml'])
+            print('adding column {} to {}'.format(col['db_field'], sobject_name))
             cur.execute(ddl)
             newcols.append(col)
         self.db.commit()
@@ -355,7 +361,7 @@ class Driver(DbDriverMeta):
         return newcols
 
     def alter_table_drop_columns(self, drop_field_names, sobject_name):
-        ddl_template = 'ALTER TABLE "{}" DROP COLUMN {}'
+        ddl_template = 'ALTER TABLE {} DROP COLUMN {}'
         cur = self.db.cursor()
         for field in drop_field_names:
             ddl = ddl_template.format(self.fq_table(sobject_name), field)
@@ -364,11 +370,11 @@ class Driver(DbDriverMeta):
         cur.close()
 
     def maintain_indexes(self, sobject_name, field_defs):
-        ddl_template = 'CREATE INDEX IF NOT EXISTS {}_{} ON "{}" ({})'
+        ddl_template = 'CREATE INDEX IF NOT EXISTS {}_{} ON {} ({})'
         cur = self.db.cursor()
         for field in field_defs:
             if field['externalId'] or field['idLookup']:
-                ddl = ddl_template.format(sobject_name, field['name'], sobject_name, field['name'])
+                ddl = ddl_template.format(sobject_name, field['name'], self.fq_table(sobject_name), field['name'])
                 cur.execute(ddl)
         self.db.commit()
         cur.close()
@@ -395,13 +401,16 @@ class Driver(DbDriverMeta):
         sql = ',\n'.join(tablecols)
         return sobject_name, fieldlist, 'create table "{2}"."{0}" ( \n{1} )\n'.format(self.fq_table(sobject_name), sql, self.schema_name)
 
+    ######
+    # this def is out of place !!!! <----------------------------------
+    #
     def make_select_statement(self, field_names, sobject_name):
-        select = 'select ' + ','.join(field_names) + ' from ' + self.fq_table(sobject_name)
+        select = 'select ' + ','.join(field_names) + ' from ' + sobject_name
         return select
 
     def getMaxTimestamp(self, tablename):
         col_cursor = self.db.cursor()
-        col_cursor.execute('select max(lastmodifieddate) from "' + self.fq_table(tablename) + '"')
+        col_cursor.execute('select max(lastmodifieddate) from ' + self.fq_table(tablename))
         stamp, = col_cursor.fetchone()
         col_cursor.close()
         return stamp

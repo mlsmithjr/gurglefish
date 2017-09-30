@@ -11,7 +11,6 @@ import yaml
 import config
 import querytools
 import tools
-from DriverManager import DbDriverMeta
 from context import Context
 from schema import SchemaManager
 
@@ -45,7 +44,7 @@ class SFExporter:
             tablename = table['name']
             print('{}:'.format(tablename))
 
-            # check for new or dropped columns and process accordingly
+            # check for column changes and process accordingly
             schema_mgr.update_sobject(tablename)
 
             tstamp = self.context.dbdriver.getMaxTimestamp(tablename)

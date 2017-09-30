@@ -55,7 +55,7 @@ if __name__ == '__main__':
         sobjectconfig = []
         for sobject in sobject_list:
             name = sobject['name']
-            node = { 'name': name, 'auto-drop-columns': True, 'auto-create-columns': True, 'sync-schedule': 'run' }
+            node = { 'name': name, 'enabled':False, 'auto-drop-columns': True, 'auto-create-columns': True, 'auto-resize-columns':True, 'sync-schedule': 'always' }
             sobjectconfig.append(node)
         configmap = {'configuration': { 'sobjects': sobjectconfig }}
         context.filemgr.save_config(configmap)

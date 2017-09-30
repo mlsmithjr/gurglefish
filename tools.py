@@ -27,3 +27,14 @@ def json_serial(obj):
         return serial
     return str(obj)
     raise TypeError("Type not serializable")
+
+def dict_list_to_dict(alist, keyfield):
+    assert(keyfield is not None)
+    assert(alist is not None)
+
+    result = dict()
+    for item in alist:
+        key = item[keyfield]
+        result[key] = item
+    return result
+

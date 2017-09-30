@@ -21,8 +21,8 @@ class CacheTest(TestCase):
         solist = agent.getSobjectList()
         self.assertEqual(agent.cache_hits, 1, 'Expected 1 cache hit')
 
-        acctdef = agent.getFieldList('Account')
-        acctdef = agent.getFieldList('Account')
+        acctdef = agent.get_field_list('Account')
+        acctdef = agent.get_field_list('Account')
         self.assertEqual(agent.cache_hits, 2, 'Expected 2 cache hits')
 
 class FetcherTest(TestCase):
