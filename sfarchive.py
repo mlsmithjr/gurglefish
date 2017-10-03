@@ -35,12 +35,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(epilog='@file arguments designate a file containing actual arguments, one per line')
     parser.add_argument("--env", help="Environment/DB settings name", metavar="env_name", required=True)
     parser.add_argument("--sync", help="sync table updates", nargs="*", metavar="object|@file")
-    parser.add_argument("--schema", help="load sobject schema", nargs="*", metavar="object|@file")
-    parser.add_argument("--create", help="create missing tables", action="store_true")
+    parser.add_argument("--schema", help="load sobject schema and create tables", nargs="*", metavar="object|@file")
     parser.add_argument("--export", help="export full sobject data", nargs="+", metavar="object|@file")
     parser.add_argument("--load", help="load/import full table data, table must be empty", nargs="*", metavar="object|@file")
     parser.add_argument("--inspect", help="inspect objects", nargs="*", metavar="object|@file")
     parser.add_argument("--init", help="initialize configuration", nargs="*")
+    parser.add_argument("--sample", help="only export a sample of data", nargs="*")
     args = parser.parse_args()
 
     envname = args.env
@@ -94,14 +94,11 @@ if __name__ == '__main__':
         else:
             schema_mgr.export_sobjects()
 
-    if args.create:
-        schema_mgr.create_tables()
-
     if args.export is not None:
         exp = SFExporter(context)
         table_list = make_arg_list(args.export)
         for tablename in table_list:
-            exp.export_copy(tablename)
+            exp.export_copy(tablename, just_sample=args.sample is not None)
 
     if args.load and len(args.load) > 0:
         imp = SFImporter(context)

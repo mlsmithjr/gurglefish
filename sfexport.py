@@ -43,8 +43,7 @@ class SFExporter:
         for table in tablelist:
             tablename = table['name']
             print('{}:'.format(tablename))
-
-            # check for column changes and process accordingly
+   # check for column changes and process accordingly
             schema_mgr.update_sobject(tablename)
 
             tstamp = self.context.dbdriver.getMaxTimestamp(tablename)
@@ -94,7 +93,7 @@ class SFExporter:
             cur.close()
             journal.close()
 
-    def export_copy(self, sobject_name, timestamp=None, path=None):
+    def export_copy(self, sobject_name, just_sample = False, timestamp=None, path=None):
         if path is None: path = './'
 
         xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
@@ -109,6 +108,8 @@ class SFExporter:
         soql = 'select {} from {}'.format(','.join(soqlfields), sobject_name)
         if not timestamp is None:
             soql += ' where LastModifiedDate > {0}'.format(querytools.sfTimestamp(timestamp))
+        if just_sample:
+            soql += ' limit 500'
         counter = 0
         totalSize = self.context.sfclient.record_count(sobject_name)
         if sys.stdout.isatty():

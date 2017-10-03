@@ -399,7 +399,7 @@ class Driver(DbDriverMeta):
                 fieldlist.append(column)
                 tablecols.append('  ' + column['db_field'] + ' ' + column['dml'])
         sql = ',\n'.join(tablecols)
-        return sobject_name, fieldlist, 'create table "{2}"."{0}" ( \n{1} )\n'.format(self.fq_table(sobject_name), sql, self.schema_name)
+        return sobject_name, fieldlist, 'create table {0} ( \n{1} )\n'.format(self.fq_table(sobject_name), sql)
 
     ######
     # this def is out of place !!!! <----------------------------------

@@ -4,7 +4,6 @@ import DriverManager
 from context import Context
 from db.mdatadb import MDEngine
 from salesforce.sfapi import SFClient
-from schema import SchemaManager
 
 
 def setup_env(envname) -> Context:
@@ -37,4 +36,5 @@ def dict_list_to_dict(alist, keyfield):
         key = item[keyfield]
         result[key] = item
     return result
+
 

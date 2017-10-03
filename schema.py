@@ -45,30 +45,30 @@ class SchemaManager:
                     print(ex)
         return table_list
 
-    def create_tables(self, filterlist = None):
-        for root, dirs, files in os.walk(self.storagedir):
-            for dir in dirs:
-                if not filterlist is None and not dir in filterlist:
-                    continue
-                try:
-                    sqlname = os.path.join(self.storagedir, dir, '{}.sql'.format(dir))
-                    if os.path.isfile(sqlname):
-                        if not self.driver.table_exists(dir):
-                            with open(sqlname, 'r') as f:
-                                sql = f.read()
-                                print('creating ' + dir)
-                                self.driver.exec_dml(sql)
-                except Exception as ex:
-                    print(ex)
+    # def create_tables(self, filterlist = None):
+    #     for root, dirs, files in os.walk(self.storagedir):
+    #         for dir in dirs:
+    #             if not filterlist is None and not dir in filterlist:
+    #                 continue
+    #             try:
+    #                 sqlname = os.path.join(self.storagedir, dir, '{}.sql'.format(dir))
+    #                 if os.path.isfile(sqlname):
+    #                     if not self.driver.table_exists(dir):
+    #                         with open(sqlname, 'r') as f:
+    #                             sql = f.read()
+    #                             print('creating ' + dir)
+    #                             self.driver.exec_dml(sql)
+    #             except Exception as ex:
+    #                 print(ex)
 
-    def drop_tables(self):
-        for root, dirs, files in os.walk(self.storagedir):
-            for dir in dirs:
-                try:
-                    if self.driver.table_exists(dir):
-                        self.driver.exec_dml('drop table ' + dir)
-                except Exception as ex:
-                    print(ex)
+    # def drop_tables(self):
+    #     for root, dirs, files in os.walk(self.storagedir):
+    #         for dir in dirs:
+    #             try:
+    #                 if self.driver.table_exists(dir):
+    #                     self.driver.exec_dml('drop table ' + dir)
+    #             except Exception as ex:
+    #                 print(ex)
 
     def exportSObject(self, names):
         docs = []
@@ -126,19 +126,35 @@ class SchemaManager:
 
 #        for new_sobject_name in sorted(new_names):
         for new_sobject_name in sorted(sobject_names):
-            new_sobject_name = new_sobject_name.lower()
+            self.process_sobject(new_sobject_name)
 
-            fields = self.sfclient.get_field_list(new_sobject_name)
-            table_name, fieldmap, create_table_dml = self.driver.make_create_table(fields, new_sobject_name)
-            select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap], new_sobject_name)
+    def process_sobject(self, sobject_name):
+        new_sobject_name = sobject_name.lower()
 
-            parser = self.driver.make_transformer(new_sobject_name, table_name, fieldmap)
+        fields = self.sfclient.get_field_list(new_sobject_name)
+        table_name, fieldmap, create_table_dml = self.driver.make_create_table(fields, new_sobject_name)
+        select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap],
+                                                   new_sobject_name)
 
-            self.filemgr.save_sobject_fields(new_sobject_name, fields)
-            self.filemgr.save_sobject_transformer(new_sobject_name, parser)
-            self.filemgr.save_sobject_map(new_sobject_name, fieldmap)
-            self.filemgr.save_table_create(new_sobject_name, create_table_dml + ';\n\n')
-            self.filemgr.save_sobject_query(new_sobject_name, select)
+        parser = self.driver.make_transformer(new_sobject_name, table_name, fieldmap)
+
+        self.filemgr.save_sobject_fields(new_sobject_name, fields)
+        self.filemgr.save_sobject_transformer(new_sobject_name, parser)
+        self.filemgr.save_sobject_map(new_sobject_name, fieldmap)
+        self.filemgr.save_table_create(new_sobject_name, create_table_dml + ';\n\n')
+        self.filemgr.save_sobject_query(new_sobject_name, select)
+
+        #
+        # now create the table, if needed
+        #
+
+        try:
+            if not self.driver.table_exists(sobject_name):
+                print('creating ' + sobject_name)
+                self.driver.exec_dml(create_table_dml)
+                self.driver.maintain_indexes(sobject_name, fields)
+        except Exception as ex:
+            print(ex)
 
     def update_sobject(self, sobject_name):
         sobject_name = sobject_name.lower()
@@ -156,18 +172,18 @@ class SchemaManager:
         if len(new_fields) > 0:
             new_field_defs = [sobj_columns[f] for f in new_fields]
             newfieldmap = self.driver.alter_table_add_columns(new_field_defs, sobject_name)
+            if len(newfieldmap) > 0:
+                self.driver.maintain_indexes(sobject_name, new_field_defs)
 
-            self.driver.maintain_indexes(sobject_name, new_field_defs)
+                fieldmap = self.filemgr.get_sobject_map(sobject_name)
+                fieldmap.extend(newfieldmap)
+                self.filemgr.save_sobject_map(sobject_name, fieldmap)
+                select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap], sobject_name)
+                self.filemgr.save_sobject_query(sobject_name, select)
+                parser = self.driver.make_transformer(sobject_name, sobject_name, fieldmap)
+                self.filemgr.save_sobject_transformer(sobject_name, parser)
 
-            fieldmap = self.filemgr.get_sobject_map(sobject_name)
-            fieldmap.extend(newfieldmap)
-            self.filemgr.save_sobject_map(sobject_name, fieldmap)
-            select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap], sobject_name)
-            self.filemgr.save_sobject_query(sobject_name, select)
-            parser = self.driver.make_transformer(sobject_name, sobject_name, fieldmap)
-            self.filemgr.save_sobject_transformer(sobject_name, parser)
-
-            self.filemgr.save_sobject_fields(sobject_name, [f for f in sobj_columns.values()])
+                self.filemgr.save_sobject_fields(sobject_name, [f for f in sobj_columns.values()])
 
         if len(dropped_fields) > 0:
             fieldmap = self.filemgr.get_sobject_map(sobject_name)
