@@ -374,8 +374,9 @@ class Driver(DbDriverMeta):
         cur = self.db.cursor()
         for field in field_defs:
             if field['externalId'] or field['idLookup']:
-                ddl = ddl_template.format(sobject_name, field['name'], self.fq_table(sobject_name), field['name'])
-                cur.execute(ddl)
+                if field['name'].lower() != 'id':       # Id is already set as the pkey
+                    ddl = ddl_template.format(sobject_name, field['name'], self.fq_table(sobject_name), field['name'])
+                    cur.execute(ddl)
         self.db.commit()
         cur.close()
 

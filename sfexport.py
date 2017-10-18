@@ -33,7 +33,6 @@ class SFExporter:
         self.storagedir = context.filemgr.exportdir
         os.makedirs(self.storagedir, exist_ok=True)
 
-
     def sync_tables(self, schema_mgr : SchemaManager, filterlist = None):
         if filterlist:
             filterlist = [name.lower() for name in filterlist]

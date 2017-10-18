@@ -1,4 +1,4 @@
-from schema import SchemaManager
+
 
 __author__ = 'mark'
 from flask import Flask, render_template
@@ -30,8 +30,7 @@ def hello():
 
 @app.route("/home")
 def home():
-    thelist = mde.fetch_dblist()
-    return render_template('home.html', dblist=thelist)
+    return render_template('home.html')
 
 @app.route("/createdb")
 def createdb():
