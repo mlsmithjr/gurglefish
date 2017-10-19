@@ -3,10 +3,11 @@ import gzip
 import json
 
 import datetime
-import yaml
+#import yaml
 import os
 import config
 from DriverManager import DbDriverMeta
+from schema import SchemaManager
 
 __author__ = 'mark'
 
@@ -24,14 +25,17 @@ def json_serial(obj):
 class SFImporter:
     context = None
 
-    def __init__(self, context):
+    def __init__(self, context, schema_mgr : SchemaManager):
         self.context = context
         self.storagedir = context.filemgr.exportdir
+        self.schema_mgr = schema_mgr
 
+    def bulk_load(self, sobject_name):
 
-    def bulk_load(self, db : DbDriverMeta, sobject_name, path = None):
-        if path is None: path = './'
-        return db.bulk_load(sobject_name)
+        if not self.context.dbdriver.table_exists(sobject_name):
+            self.schema_mgr.create_table(sobject_name)
+
+        return self.context.dbdriver.bulk_load(sobject_name)
 
 
     def import_yaml(self, db : DbDriverMeta, sobject_name, path = None):

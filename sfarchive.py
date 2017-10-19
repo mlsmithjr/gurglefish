@@ -101,11 +101,11 @@ if __name__ == '__main__':
             exp.export_copy(tablename, just_sample=args.sample is not None)
 
     if args.load and len(args.load) > 0:
-        imp = SFImporter(context)
+        imp = SFImporter(context, schema_mgr)
         table_list = make_arg_list(args.load)
         for tablename in table_list:
             print('loading {}'.format(tablename))
-            count = imp.bulk_load(context.dbdriver, tablename)
+            count = imp.bulk_load(tablename)
             print('loaded {} records'.format(count))
 
             # if args.updates and len(args.updates) > 0:

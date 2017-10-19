@@ -7,7 +7,7 @@ import os
 import sys
 
 import datetime
-import yaml
+#import yaml
 import config
 import querytools
 import tools
@@ -34,16 +34,21 @@ class SFExporter:
         os.makedirs(self.storagedir, exist_ok=True)
 
     def sync_tables(self, schema_mgr : SchemaManager, filterlist = None):
-        if filterlist:
-            filterlist = [name.lower() for name in filterlist]
-        tablelist = [table for table in schema_mgr.get_os_tables() if table['exists']]
-        if filterlist:
-            tablelist = [table for table in tablelist if table['name'] in filterlist]
+        table_config = self.context.filemgr.get_config()
+        tablelist = [table for table in table_config if table['enabled']]
+#        if filterlist:
+#            filterlist = [name.lower() for name in filterlist]
+#        tablelist = [table for table in schema_mgr.get_os_tables() if table['exists']]
+#        if filterlist:
+#            tablelist = [table for table in tablelist if table['name'] in filterlist]
         for table in tablelist:
             tablename = table['name']
             print('{}:'.format(tablename))
-   # check for column changes and process accordingly
-            schema_mgr.update_sobject(tablename)
+            if not self.context.dbdriver.table_exists(tablename):
+                schema_mgr.create_table(tablename)
+            else:
+                # check for column changes and process accordingly
+                schema_mgr.update_sobject(tablename)
 
             tstamp = self.context.dbdriver.getMaxTimestamp(tablename)
             self.etl(self.context.filemgr.get_sobject_query(tablename), tablename, timestamp=tstamp)
@@ -145,100 +150,100 @@ class SFExporter:
             print("\nexported {} records{}".format(counter, ' '*10))
 
 
-    def exportYAML(self, db, sf, sobject_name, timestamp=None, path=None):
-        if path is None: path = './'
-
-        try:
-            from yaml import CLoader as Loader, CDumper as Dumper
-        except ImportError:
-            from yaml import Loader, Dumper
-
-        xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
-
-        soql = db.get_query(sobject_name)
-        if not timestamp is None:
-            soql += ' where LastModifiedDate > {0}'.format(querytools.sfTimestamp(timestamp))
-        with open(os.path.join(self.storagedir, sobject_name + '.yaml'), 'w') as export:
-            for rec in sf.query(soql):
-                del rec['attributes']
-                trec = xlate_handler.parse(rec)
-                export.write('---\n')
-                yaml.dump(trec, export, Dumper=Dumper, default_flow_style=True)
-
-    def exportJSON(self, db, sf, sobject_name, timestamp = None, path = None):
-        if path is None: path = './'
-
-        soql = db.get_query(sobject_name)
-        if not timestamp is None:
-            soql += ' where LastModifiedDate > {0}'.format(timestamp)
-#        with gzip.open(os.path.join(self.storagedir, sobject_name + '.json.gz'), 'wb') as export:
-        with open(os.path.join(self.storagedir, sobject_name + '.json'), 'w') as export:
-            export.write('[\n')
-            for rec in sf.query(soql):
-                del rec['attributes']
-                export.write(json.dumps(rec, indent=4))
-                export.write(',\n')
-            export.write(']\n')
-
-    def exportInsert(self, db, sf, sobject_name, timestamp=None, path=None):
-        if path is None: path = './'
-
-        fieldlist = self.context.filemgr.get_sobject_map(sobject_name)
-
-        fieldmap = dict((f['db_field'], f) for f in fieldlist)
-        soqlnames = fieldmap.keys()
-
-        handle = self.context.filemgr.load_translate_handler(sobject_name)
-        soql = db.get_query(sobject_name)
-        if not timestamp is None:
-            soql += ' where LastModifiedDate > {0}'.format(querytools.sfTimestamp(timestamp))
-            #        with gzip.open(os.path.join(self.storagedir, sobject_name + '.json.gz'), 'wb') as export:
-        with open(os.path.join(self.storagedir, sobject_name + '.sql'), 'w') as export:
-            for rec in sf.query(soql):
-                del rec['attributes']
-
-                trec = handle.parse(rec)
-                for n in list(trec.keys()):
-                    if n not in soqlnames:
-                        print('warn: field skipped - ' + n)
-                        continue
-                    if trec[n] is None:
-                        trec[n] = 'null'
-                    else:
-                        if isinstance(trec[n], str):
-                            fixed = trec[n].replace("'", "''")
-                            trec[n] = "'" + fixed + "'"
-                        elif isinstance(trec[n], datetime.datetime):
-                            trec[n] = "'" + str(trec[n]) + "'"
-                names = trec.keys()
-                namelist = ','.join(names)
-                values = ','.join([str(v) for v in trec.values()])
-                export.write('insert into {} ({}) values ({});\n'.format(sobject_name, namelist, values))
-            export.write('\n')
-
-    def exportCSV(self, db, sf, sobject_name, timestamp = None, path = None):
-        if path is None: path = './'
-
-        handle = self.context.filemgr.load_translate_handler(sobject_name)
-        with open(os.path.join(config.storagedir, 'db', self.dbname, 'schema', sobject_name, '{}_map.json'.format(sobject_name)), 'r') as mapfile:
-            fieldlist = json.load(mapfile)
-
-        fieldmap = dict((f['db_field'], f) for f in fieldlist)
-        fieldnames = sorted(fieldmap.keys())
-        soql = db.get_query(sobject_name)
-        if not timestamp is None:
-            soql += ' where LastModifiedDate > {0}'.format(querytools.sfTimestamp(timestamp))
-
-#        with gzip.open(os.path.join(self.storagedir, sobject_name + '.csv.gz'), 'wb') as export:
-        with open(os.path.join(self.storagedir, sobject_name + '.csv'), 'w') as export:
-            csvwriter = csv.writer(export, quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            csvwriter.writerow(fieldnames)
-            for rec in sf.query(soql):
-                record = []
-                trec = handle.parse(rec)
-                for fname in fieldnames:
-                    if fname in trec:
-                        record.append(trec[fname])
-                    else:
-                        record.append('null')
-                csvwriter.writerow(record)
+#     def exportYAML(self, db, sf, sobject_name, timestamp=None, path=None):
+#         if path is None: path = './'
+#
+#         try:
+#             from yaml import CLoader as Loader, CDumper as Dumper
+#         except ImportError:
+#             from yaml import Loader, Dumper
+#
+#         xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
+#
+#         soql = db.get_query(sobject_name)
+#         if not timestamp is None:
+#             soql += ' where LastModifiedDate > {0}'.format(querytools.sfTimestamp(timestamp))
+#         with open(os.path.join(self.storagedir, sobject_name + '.yaml'), 'w') as export:
+#             for rec in sf.query(soql):
+#                 del rec['attributes']
+#                 trec = xlate_handler.parse(rec)
+#                 export.write('---\n')
+#                 yaml.dump(trec, export, Dumper=Dumper, default_flow_style=True)
+#
+#     def exportJSON(self, db, sf, sobject_name, timestamp = None, path = None):
+#         if path is None: path = './'
+#
+#         soql = db.get_query(sobject_name)
+#         if not timestamp is None:
+#             soql += ' where LastModifiedDate > {0}'.format(timestamp)
+# #        with gzip.open(os.path.join(self.storagedir, sobject_name + '.json.gz'), 'wb') as export:
+#         with open(os.path.join(self.storagedir, sobject_name + '.json'), 'w') as export:
+#             export.write('[\n')
+#             for rec in sf.query(soql):
+#                 del rec['attributes']
+#                 export.write(json.dumps(rec, indent=4))
+#                 export.write(',\n')
+#             export.write(']\n')
+#
+#     def exportInsert(self, db, sf, sobject_name, timestamp=None, path=None):
+#         if path is None: path = './'
+#
+#         fieldlist = self.context.filemgr.get_sobject_map(sobject_name)
+#
+#         fieldmap = dict((f['db_field'], f) for f in fieldlist)
+#         soqlnames = fieldmap.keys()
+#
+#         handle = self.context.filemgr.load_translate_handler(sobject_name)
+#         soql = db.get_query(sobject_name)
+#         if not timestamp is None:
+#             soql += ' where LastModifiedDate > {0}'.format(querytools.sfTimestamp(timestamp))
+#             #        with gzip.open(os.path.join(self.storagedir, sobject_name + '.json.gz'), 'wb') as export:
+#         with open(os.path.join(self.storagedir, sobject_name + '.sql'), 'w') as export:
+#             for rec in sf.query(soql):
+#                 del rec['attributes']
+#
+#                 trec = handle.parse(rec)
+#                 for n in list(trec.keys()):
+#                     if n not in soqlnames:
+#                         print('warn: field skipped - ' + n)
+#                         continue
+#                     if trec[n] is None:
+#                         trec[n] = 'null'
+#                     else:
+#                         if isinstance(trec[n], str):
+#                             fixed = trec[n].replace("'", "''")
+#                             trec[n] = "'" + fixed + "'"
+#                         elif isinstance(trec[n], datetime.datetime):
+#                             trec[n] = "'" + str(trec[n]) + "'"
+#                 names = trec.keys()
+#                 namelist = ','.join(names)
+#                 values = ','.join([str(v) for v in trec.values()])
+#                 export.write('insert into {} ({}) values ({});\n'.format(sobject_name, namelist, values))
+#             export.write('\n')
+#
+#     def exportCSV(self, db, sf, sobject_name, timestamp = None, path = None):
+#         if path is None: path = './'
+#
+#         handle = self.context.filemgr.load_translate_handler(sobject_name)
+#         with open(os.path.join(config.storagedir, 'db', self.dbname, 'schema', sobject_name, '{}_map.json'.format(sobject_name)), 'r') as mapfile:
+#             fieldlist = json.load(mapfile)
+#
+#         fieldmap = dict((f['db_field'], f) for f in fieldlist)
+#         fieldnames = sorted(fieldmap.keys())
+#         soql = db.get_query(sobject_name)
+#         if not timestamp is None:
+#             soql += ' where LastModifiedDate > {0}'.format(querytools.sfTimestamp(timestamp))
+#
+# #        with gzip.open(os.path.join(self.storagedir, sobject_name + '.csv.gz'), 'wb') as export:
+#         with open(os.path.join(self.storagedir, sobject_name + '.csv'), 'w') as export:
+#             csvwriter = csv.writer(export, quotechar='"', quoting=csv.QUOTE_MINIMAL)
+#             csvwriter.writerow(fieldnames)
+#             for rec in sf.query(soql):
+#                 record = []
+#                 trec = handle.parse(rec)
+#                 for fname in fieldnames:
+#                     if fname in trec:
+#                         record.append(trec[fname])
+#                     else:
+#                         record.append('null')
+#                 csvwriter.writerow(record)

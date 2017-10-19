@@ -59,8 +59,8 @@ class Driver(DbDriverMeta):
         return self.db.cursor()
 
     def verify_db_setup(self):
-        if not self.table_exists('gf_mdata_sync_stats'):
-            dml =   'create table {0}.gf_mdata_sync_stats (' +\
+        if not self.table_exists('gf_mdata_sync_stats', schema=self.schema_name):
+            dml =   'create table {}.gf_mdata_sync_stats (' +\
                     '  id         serial primary key, '+\
                     '  table_name text not null, '+\
                     '  inserts    numeric(8) not null, '+\
@@ -69,22 +69,32 @@ class Driver(DbDriverMeta):
                     '  sync_end   timestamp not null default now(), '+\
                     '  sync_since timestamp not null)'.format(self.schema_name)
             self.exec_dml(dml)
+        if not self.table_exists('gf_mdata_schema_chg', schema=self.schema_name):
+            dml =   'create table {}.gf_mdata_schema_chg (' +\
+                    '  id         serial primary key, '+\
+                    '  table_name text not null, '+\
+                    '  col_name   text not null, '+\
+                    '  operation  text not null, '+\
+                    '  date_added timestamp not null default now())'.format(self.schema_name)
+            self.exec_dml(dml)
 
     def insert_sync_stats(self, table_name, sync_start, sync_end, sync_since, inserts, updates):
         cur = self.cursor
-        if not sync_since:
-            sync_since = datetime.date(year=1970, month=1, day=1)
-        sql = "insert into {}".format(self.schema_name)
-        sql += ".gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) "+\
-                    "values (%s,%s,%s,%s,%s,%s)".format(self.schema_name)
-
-        cur.execute(sql, [table_name, inserts, updates, sync_start, sync_end, sync_since])
+        cur.execute('insert into {}.gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) '+\
+                    'values (%s,%s,%s,%s,%s,%s)', [table_name, inserts, updates, sync_start, sync_end, sync_since]).format(self.schema_name)
         self.db.commit()
+        cur.close()
+
+    def insert_schema_change(self, table_name:string, col_name:string, operation:string):
+        cur = self.cursor
+        cur.execute('insert into {}.gf_mdata_schema_chg (table_name, col_name, operation) '+\
+                    'values (%s,%s,%s)', [table_name, col_name, operation]).format(self.schema_name)
+        self.db_commit()
         cur.close()
 
     def bulk_load(self, tablename):
         if not os.path.isfile('/usr/bin/psql'):
-            raise Exception('psql not found. Please install postgresql client to use bulk loading')
+            raise Exception('/usr/bin/psql not found. Please install postgresql client to use bulk loading')
 
         exportfile = os.path.join(self.storagedir, 'export', tablename + '.exp.gz')
         cmd = r"\copy {} from program 'gzip -dc < {}'".format(self.fq_table(tablename), exportfile)
@@ -189,7 +199,7 @@ class Driver(DbDriverMeta):
     def get_db_tables(self) -> List[GetDbTablesResult]:
         table_cursor = self.db.cursor()
         table_cursor.execute(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name")
+            "SELECT table_name FROM information_schema.tables WHERE table_schema=%s ORDER BY table_name", (self.schema_name,))
         tables = table_cursor.fetchall()
         table_cursor.close()
         result = [GetDbTablesResult(row[0]) for row in tables]
@@ -198,75 +208,21 @@ class Driver(DbDriverMeta):
     def table_exists(self, table_name):
         table_cursor = self.db.cursor()
         table_cursor.execute(
-            "select count(*) from information_schema.tables where table_name = %s and table_schema='public'",
-            (table_name,))
+            "select count(*) from information_schema.tables where table_name = %s and table_schema=%s",
+            (table_name, self.schema_name))
         val = table_cursor.fetchone()
         cnt, = val
         return cnt > 0
-
-    def get_mapped_tables(self) -> List[GetMappedTablesResult]:
-        cur = self.new_map_cursor
-        cur.execute('select table_name, sobject_name from table_map order by sobject_name')
-        tables = cur.fetchall()
-        cur.close()
-        result = [GetMappedTablesResult(table) for table in tables]
-        return result
-
-    def get_field_map(self, sobject_name : string):
-        if CaptureManager.exists(self._bucket, sobject_name):
-            stuff = CaptureManager.fetch(self._bucket, sobject_name)
-            return stuff['table_name'], stuff['payload']
-        cur = self.new_map_cursor
-        cur.execute('select id, table_name from table_map where sobject_name = %s', (sobject_name,))
-        table_map = cur.fetchone()
-        if table_map is None: return None, None
-        cur.execute('select * from field_map where table_map = %s', (table_map['id'],))
-        fields = cur.fetchall()
-        cur.close()
-        CaptureManager.save(self._bucket, sobject_name, { 'table_name':table_map['table_name'], 'payload':fields})
-        result = [FieldMapResult(field) for field in fields]
-        return table_map['table_name'], result
-
-    def is_table_mapped(self, sobject) -> bool:
-        cur = self.new_map_cursor
-        cur.execute('select table_name from table_map where sobject_name = %s', (sobject,))
-        found = cur.fetchone() is None
-        cur.close()
-        return found
-
-    def add_column(self, sobject_name:string, fielddef:dict):
-        d = self.make_column(sobject_name, fielddef)
-        self.add_mapped_field(sobject_name, d['table_name'], d['sobject_field'], d['db_field'], d['fieldtype'])
-
-    def add_mapped_field(self, sobject_name, table_name, sobject_field, db_field, fieldtype):
-        stmt = "insert into map_drop (sobject_name, table_name, sobject_field, table_field, fieldtype) values ('{0}','{1}','{2}','{3}','{4}')"
-        stmt = stmt.format(sobject_name, table_name, sobject_field, db_field, fieldtype)
-        cur = self.db.cursor()
-        cur.execute(stmt)
-        self.db.commit()
-        cur.close()
 
     def get_db_columns(self, table_name):
         col_cursor = self.new_map_cursor
         col_cursor.execute(
             "select * from information_schema.columns where table_name=%s " + \
-            "and table_schema='public' " + \
-            "order by column_name", (table_name,))
+            "and table_schema=%s" + \
+            "order by column_name", (table_name, self.schema_name))
         cols = col_cursor.fetchall()
         col_cursor.close()
         return cols
-
-    def drop_column(self, table_name, column_name):
-        # drop the field mappings
-        # drop the column
-        print('TODO: drop_column')
-        print('dropped ' + table_name + '.' + column_name)
-
-    def drop_table(self, table_name):
-        # drop the field mappings
-        # drop the table
-        print('TODO: drop_table')
-        print('dropped ' + table_name)
 
     def make_column(self, sobject_name:str, field:dict) -> dict:
         """
@@ -380,31 +336,22 @@ class Driver(DbDriverMeta):
         self.db.commit()
         cur.close()
 
-
-    def make_create_table(self, fields, sobject_name):
-        #if self.table_exists(sobject_name) or sobject_name in self.createstack:
-        #    return
-
-        #self.createstack.append(sobject_name)
-        sobject_name = sobject_name.lower()
-        print('new sobject: ' + sobject_name)
-        tablecols = []
-        fieldlist = []
-        #self.refs[sobject_name] = []
-
-        for field in fields:
-            m = self.make_column(sobject_name, field)
-            if m is None:
-                continue
-            for column in m:
-                fieldlist.append(column)
-                tablecols.append('  ' + column['db_field'] + ' ' + column['dml'])
-        sql = ',\n'.join(tablecols)
-        return sobject_name, fieldlist, 'create table {0} ( \n{1} )\n'.format(self.fq_table(sobject_name), sql)
-
-    ######
-    # this def is out of place !!!! <----------------------------------
+    # def make_create_table(self, fields, sobject_name):
+    #     sobject_name = sobject_name.lower()
+    #     print('new sobject: ' + sobject_name)
+    #     tablecols = []
+    #     fieldlist = []
     #
+    #     for field in fields:
+    #         m = self.make_column(sobject_name, field)
+    #         if m is None:
+    #             continue
+    #         for column in m:
+    #             fieldlist.append(column)
+    #             tablecols.append('  ' + column['db_field'] + ' ' + column['dml'])
+    #     sql = ',\n'.join(tablecols)
+    #     return sobject_name, fieldlist, 'create table {0} ( \n{1} )\n'.format(self.fq_table(sobject_name), sql)
+
     def make_select_statement(self, field_names, sobject_name):
         select = 'select ' + ','.join(field_names) + ' from ' + sobject_name
         return select
