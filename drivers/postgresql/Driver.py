@@ -28,8 +28,8 @@ class Driver(DbDriverMeta):
         self.db = psycopg2.connect("dbname='{0}' user='{1}' password='{2}' host='{3}' port='{4}'".format(dbenv.dbname, dbenv.dbuser, dbenv.dbpass, dbenv.dbhost, dbport))
         self._bucket = 'db_' + dbenv.dbname
         self.storagedir = os.path.join(config.storagedir, 'db', self.dbenv.dbname)
-        self.verify_db_setup()
         self.schema_name = dbenv.schema
+        self.verify_db_setup()
         return True
 
     def exec_dml(self, dml):
@@ -59,24 +59,26 @@ class Driver(DbDriverMeta):
         return self.db.cursor()
 
     def verify_db_setup(self):
-        if not self.table_exists('gf_mdata_sync_stats', schema=self.schema_name):
-            dml =   'create table {}.gf_mdata_sync_stats (' +\
+        if not self.table_exists('gf_mdata_sync_stats'):
+            ddl =   'create table {}.gf_mdata_sync_stats (' +\
                     '  id         serial primary key, '+\
                     '  table_name text not null, '+\
                     '  inserts    numeric(8) not null, '+\
                     '  updates    numeric(8) not null, '+\
                     '  sync_start timestamp not null default now(), '+\
                     '  sync_end   timestamp not null default now(), '+\
-                    '  sync_since timestamp not null)'.format(self.schema_name)
-            self.exec_dml(dml)
-        if not self.table_exists('gf_mdata_schema_chg', schema=self.schema_name):
-            dml =   'create table {}.gf_mdata_schema_chg (' +\
+                    '  sync_since timestamp not null)'
+            ddl = ddl.format(self.schema_name)
+            self.exec_dml(ddl)
+        if not self.table_exists('gf_mdata_schema_chg'):
+            ddl =   'create table {}.gf_mdata_schema_chg (' +\
                     '  id         serial primary key, '+\
                     '  table_name text not null, '+\
                     '  col_name   text not null, '+\
                     '  operation  text not null, '+\
-                    '  date_added timestamp not null default now())'.format(self.schema_name)
-            self.exec_dml(dml)
+                    '  date_added timestamp not null default now())'
+            ddl = ddl.format(self.schema_name)
+            self.exec_dml(ddl)
 
     def insert_sync_stats(self, table_name, sync_start, sync_end, sync_since, inserts, updates):
         cur = self.cursor
@@ -305,13 +307,18 @@ class Driver(DbDriverMeta):
         for field in new_field_defs:
             col_def = self.make_column(sobject_name, field)
             if col_def is None:
-                print('unsupported column type for {} - skipped'.format(field['name']))
+#                print('unsupported column type for {} - skipped'.format(field['name']))
                 continue
             col = col_def[0]
             ddl = ddl_template.format(self.fq_table(sobject_name), col['db_field'], col['dml'])
             print('adding column {} to {}'.format(col['db_field'], sobject_name))
             cur.execute(ddl)
             newcols.append(col)
+
+            # record change to schema
+            sql = 'insert into {}.gf_mdata_schema_chg (table_name, col_name, operation) values (%s,%s,%s)'
+            cur.execute(sql.format(self.schema_name), [sobject_name, col['db_field'], 'create'])
+
         self.db.commit()
         cur.close()
         return newcols
@@ -322,6 +329,11 @@ class Driver(DbDriverMeta):
         for field in drop_field_names:
             ddl = ddl_template.format(self.fq_table(sobject_name), field)
             cur.execute(ddl)
+
+            # record change to schema
+            sql = 'insert into {}.gf_mdata_schema_chg (table_name, col_name, operation) values (%s,%s,%s)'
+            cur.execute(sql.format(self.schema_name), [sobject_name, field, 'drop'])
+
         self.db.commit()
         cur.close()
 

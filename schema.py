@@ -176,7 +176,7 @@ class SchemaManager:
     #     except Exception as ex:
     #         print(ex)
 
-    def update_sobject(self, sobject_name):
+    def update_sobject(self, sobject_name, allow_add = True, allow_drop = True):
         sobject_name = sobject_name.lower()
 
         sobj_columns = self.sfclient.get_field_map(sobject_name)
@@ -190,6 +190,8 @@ class SchemaManager:
         new_fields = sobj_field_names - table_field_names
         dropped_fields = table_field_names - sobj_field_names
         if len(new_fields) > 0:
+            if not allow_add:
+                print('warning: new columns found for table {}, auto-create of new columns disabled'.format(sobject_name))
             new_field_defs = [sobj_columns[f] for f in new_fields]
             newfieldmap = self.driver.alter_table_add_columns(new_field_defs, sobject_name)
             if len(newfieldmap) > 0:
@@ -206,6 +208,9 @@ class SchemaManager:
                 self.filemgr.save_sobject_fields(sobject_name, [f for f in sobj_columns.values()])
 
         if len(dropped_fields) > 0:
+            if not allow_drop:
+                # do not allow sync until field(s) allowed to be dropped
+                return False
             fieldmap = self.filemgr.get_sobject_map(sobject_name)
             newlist = list()
             for item in fieldmap:
@@ -223,6 +228,7 @@ class SchemaManager:
 
             self.filemgr.save_sobject_fields(sobject_name, [f for f in sobj_columns.values()])
 
+        return True
 
 
 

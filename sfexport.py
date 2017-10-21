@@ -34,7 +34,7 @@ class SFExporter:
         os.makedirs(self.storagedir, exist_ok=True)
 
     def sync_tables(self, schema_mgr : SchemaManager, filterlist = None):
-        table_config = self.context.filemgr.get_config()
+        table_config = self.context.filemgr.get_configured_tables()
         tablelist = [table for table in table_config if table['enabled']]
 #        if filterlist:
 #            filterlist = [name.lower() for name in filterlist]
@@ -42,13 +42,16 @@ class SFExporter:
 #        if filterlist:
 #            tablelist = [table for table in tablelist if table['name'] in filterlist]
         for table in tablelist:
-            tablename = table['name']
+            tablename = table['name'].lower()
             print('{}:'.format(tablename))
             if not self.context.dbdriver.table_exists(tablename):
                 schema_mgr.create_table(tablename)
             else:
                 # check for column changes and process accordingly
-                schema_mgr.update_sobject(tablename)
+                proceed = schema_mgr.update_sobject(tablename, allow_add=table['auto-create-columns'], allow_drop=table['auto-drop-columns'])
+                if not proceed:
+                    print('sync of {} skipped due to warnings'.format(tablename))
+                    return
 
             tstamp = self.context.dbdriver.getMaxTimestamp(tablename)
             self.etl(self.context.filemgr.get_sobject_query(tablename), tablename, timestamp=tstamp)

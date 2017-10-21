@@ -55,13 +55,13 @@ class FileManager(object):
         with open(filename, 'r') as jsonfile:
             return json.load(jsonfile)
 
+    def get_configured_tables(self):
+        with open(os.path.join(self.basedir, 'db', 'config.json'), 'r') as configfile:
+            return json.load(configfile)['configuration']['sobjects']
+
     def get_config(self):
-        try:
             with open(os.path.join(self.basedir, 'db', 'config.json'), 'r') as configfile:
                 return json.load(configfile)
-        except:
-            pass
-        return None
 
     def save_config(self, configmap):
         with open(os.path.join(self.basedir, 'db', 'config.json'), 'w') as configfile:
