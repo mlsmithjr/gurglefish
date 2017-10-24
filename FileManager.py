@@ -52,8 +52,11 @@ class FileManager(object):
     def get_sobject_fields(self, sobject_name):
         os.makedirs(os.path.join(self.schemadir, sobject_name), exist_ok=True)
         filename = os.path.join(self.schemadir, sobject_name, sobject_name + '.json')
-        with open(filename, 'r') as jsonfile:
-            return json.load(jsonfile)
+        try:
+            with open(filename, 'r') as jsonfile:
+                return json.load(jsonfile)
+        except Exception:
+            return None
 
     def get_configured_tables(self):
         with open(os.path.join(self.basedir, 'db', 'config.json'), 'r') as configfile:

@@ -70,17 +70,17 @@ class SchemaManager:
     #             except Exception as ex:
     #                 print(ex)
 
-    # def exportSObject(self, names):
-    #     docs = []
-    #     for name in names:
-    #         try:
-    #             doc = self.sfclient.get_sobject_definition(name)
-    #             docs.append(doc)
-    #         except Exception as ex:
-    #             print('Unable to retrieve {}, skipping'.format(name))
-    #             print(ex)
-    #             raise ex
-    #     return self.process_sobjects(docs)
+    def exportSObject(self, names):
+        docs = []
+        for name in names:
+            try:
+                doc = self.sfclient.get_sobject_definition(name)
+                docs.append(doc)
+            except Exception as ex:
+                print('Unable to retrieve {}, skipping'.format(name))
+                print(ex)
+                raise ex
+        return self.process_sobjects(docs)
 
     def accept_sobject(self, sobj:dict) -> bool:
         """
@@ -116,16 +116,20 @@ class SchemaManager:
     #         solist = [sobj for sobj in solist if self.accept_sobject(sobj)]
     #     return self.process_sobjects(solist)
 
-    # def process_sobjects(self, solist):
-    #     self.sodict = dict([(so['name'], so) for so in solist])
-    #     sobject_names = set([so['name'].lower() for so in solist])
-    #     for new_sobject_name in sorted(sobject_names):
-    #         self.process_sobject(new_sobject_name)
+    def process_sobjects(self, solist):
+        self.sodict = dict([(so['name'], so) for so in solist])
+        sobject_names = set([so['name'].lower() for so in solist])
+        for new_sobject_name in sorted(sobject_names):
+            self.process_sobject(new_sobject_name)
 
     def create_table(self, sobject_name):
         new_sobject_name = sobject_name.lower()
 
-        fields = self.sfclient.get_field_list(new_sobject_name)
+        fields = self.filemgr.get_sobject_fields(sobject_name)
+        if fields is None:
+            fields = self.sfclient.get_field_list(new_sobject_name)
+            self.filemgr.save_sobject_fields(sobject_name, fields)
+
         table_name, fieldmap, create_table_dml = self.driver.make_create_table(fields, new_sobject_name)
         select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap],
                                                    new_sobject_name)
@@ -134,6 +138,7 @@ class SchemaManager:
 
         self.filemgr.save_sobject_fields(new_sobject_name, fields)
         self.filemgr.save_sobject_transformer(new_sobject_name, parser)
+        self.filemgr.save_sobject_map(new_sobject_name, fieldmap)
         self.filemgr.save_sobject_query(new_sobject_name, select)
 
         #
@@ -148,33 +153,33 @@ class SchemaManager:
         except Exception as ex:
             print(ex)
 
-    # def process_sobject(self, sobject_name):
-    #     new_sobject_name = sobject_name.lower()
-    #
-    #     fields = self.sfclient.get_field_list(new_sobject_name)
-    #     table_name, fieldmap, create_table_dml = self.driver.make_create_table(fields, new_sobject_name)
-    #     select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap],
-    #                                                new_sobject_name)
-    #
-    #     parser = self.driver.make_transformer(new_sobject_name, table_name, fieldmap)
-    #
-    #     self.filemgr.save_sobject_fields(new_sobject_name, fields)
-    #     self.filemgr.save_sobject_transformer(new_sobject_name, parser)
-    #     self.filemgr.save_sobject_map(new_sobject_name, fieldmap)
-    #     self.filemgr.save_table_create(new_sobject_name, create_table_dml + ';\n\n')
-    #     self.filemgr.save_sobject_query(new_sobject_name, select)
-    #
-    #     #
-    #     # now create the table, if needed
-    #     #
-    #
-    #     try:
-    #         if not self.driver.table_exists(sobject_name):
-    #             print('creating ' + sobject_name)
-    #             self.driver.exec_dml(create_table_dml)
-    #             self.driver.maintain_indexes(sobject_name, fields)
-    #     except Exception as ex:
-    #         print(ex)
+    def process_sobject(self, sobject_name):
+        new_sobject_name = sobject_name.lower()
+
+        fields = self.sfclient.get_field_list(new_sobject_name)
+        table_name, fieldmap, create_table_dml = self.driver.make_create_table(fields, new_sobject_name)
+        select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap],
+                                                   new_sobject_name)
+
+        parser = self.driver.make_transformer(new_sobject_name, table_name, fieldmap)
+
+        self.filemgr.save_sobject_fields(new_sobject_name, fields)
+        self.filemgr.save_sobject_transformer(new_sobject_name, parser)
+        self.filemgr.save_sobject_map(new_sobject_name, fieldmap)
+        self.filemgr.save_table_create(new_sobject_name, create_table_dml + ';\n\n')
+        self.filemgr.save_sobject_query(new_sobject_name, select)
+
+        #
+        # now create the table, if needed
+        #
+
+        # try:
+        #     if not self.driver.table_exists(sobject_name):
+        #         print('creating ' + sobject_name)
+        #         self.driver.exec_dml(create_table_dml)
+        #         self.driver.maintain_indexes(sobject_name, fields)
+        # except Exception as ex:
+        #     print(ex)
 
     def update_sobject(self, sobject_name, allow_add = True, allow_drop = True):
         sobject_name = sobject_name.lower()

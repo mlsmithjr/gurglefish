@@ -82,15 +82,16 @@ class Driver(DbDriverMeta):
 
     def insert_sync_stats(self, table_name, sync_start, sync_end, sync_since, inserts, updates):
         cur = self.cursor
-        cur.execute('insert into {}.gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) '+\
-                    'values (%s,%s,%s,%s,%s,%s)', [table_name, inserts, updates, sync_start, sync_end, sync_since]).format(self.schema_name)
+        dml = 'insert into {}.gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) '+\
+                    'values (%s,%s,%s,%s,%s,%s)'
+        cur.execute(dml.format(self.schema_name), [table_name, inserts, updates, sync_start, sync_end, sync_since])
         self.db.commit()
         cur.close()
 
     def insert_schema_change(self, table_name:string, col_name:string, operation:string):
         cur = self.cursor
-        cur.execute('insert into {}.gf_mdata_schema_chg (table_name, col_name, operation) '+\
-                    'values (%s,%s,%s)', [table_name, col_name, operation]).format(self.schema_name)
+        dml = 'insert into {}.gf_mdata_schema_chg (table_name, col_name, operation) values (%s,%s,%s)'
+        cur.execute(dml.format(self.schema_name), [table_name, col_name, operation])
         self.db_commit()
         cur.close()
 
@@ -348,21 +349,21 @@ class Driver(DbDriverMeta):
         self.db.commit()
         cur.close()
 
-    # def make_create_table(self, fields, sobject_name):
-    #     sobject_name = sobject_name.lower()
-    #     print('new sobject: ' + sobject_name)
-    #     tablecols = []
-    #     fieldlist = []
-    #
-    #     for field in fields:
-    #         m = self.make_column(sobject_name, field)
-    #         if m is None:
-    #             continue
-    #         for column in m:
-    #             fieldlist.append(column)
-    #             tablecols.append('  ' + column['db_field'] + ' ' + column['dml'])
-    #     sql = ',\n'.join(tablecols)
-    #     return sobject_name, fieldlist, 'create table {0} ( \n{1} )\n'.format(self.fq_table(sobject_name), sql)
+    def make_create_table(self, fields, sobject_name):
+        sobject_name = sobject_name.lower()
+        print('new sobject: ' + sobject_name)
+        tablecols = []
+        fieldlist = []
+
+        for field in fields:
+            m = self.make_column(sobject_name, field)
+            if m is None:
+                continue
+            for column in m:
+                fieldlist.append(column)
+                tablecols.append('  ' + column['db_field'] + ' ' + column['dml'])
+        sql = ',\n'.join(tablecols)
+        return sobject_name, fieldlist, 'create table {0} ( \n{1} )\n'.format(self.fq_table(sobject_name), sql)
 
     def make_select_statement(self, field_names, sobject_name):
         select = 'select ' + ','.join(field_names) + ' from ' + sobject_name
