@@ -2,9 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d124db09-0291-4cb6-a10f-1f5c4d52d993" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/FileManager.py" afterPath="$PROJECT_DIR$/FileManager.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/drivers/postgresql/Driver.py" afterPath="$PROJECT_DIR$/drivers/postgresql/Driver.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/schema.py" afterPath="$PROJECT_DIR$/schema.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sfexport.py" afterPath="$PROJECT_DIR$/sfexport.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -21,7 +20,7 @@
     <SUITE FILE_PATH="coverage/sfarchiver$Unittests_for_pgdriver_TestMDEngine_test_upsert.coverage" NAME="Unittests for pgdriver.TestMDEngine.test_upsert Coverage Results" MODIFIED="1496434724028" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/sfarchiver$run_import.coverage" NAME="run import Coverage Results" MODIFIED="1506986413381" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/sfarchiver$Unittests_for_pgdriver_TestMDEngine.coverage" NAME="Unittests for pgdriver.TestMDEngine Coverage Results" MODIFIED="1496428177410" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
-    <SUITE FILE_PATH="coverage/sfarchiver$sync.coverage" NAME="sync Coverage Results" MODIFIED="1508807880103" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/sfarchiver$sync.coverage" NAME="sync Coverage Results" MODIFIED="1508894679549" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/sfarchiver$Unittests_in_pgdriver_py.coverage" NAME="Unittests in pgdriver.py Coverage Results" MODIFIED="1496432548660" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/sfarchiver$run_schema.coverage" NAME="run schema Coverage Results" MODIFIED="1508806937226" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/sfarchiver$sfapi.coverage" NAME="run schema Coverage Results" MODIFIED="1494619307395" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
@@ -39,7 +38,7 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="sfarchive.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="sfarchive.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/sfarchive.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="1185">
@@ -85,13 +84,13 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="sfexport.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="sfexport.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/sfexport.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="239">
-              <caret line="107" column="0" lean-forward="false" selection-start-line="107" selection-start-column="0" selection-end-line="107" selection-end-column="0" />
+            <state relative-caret-position="401">
+              <caret line="65" column="46" lean-forward="false" selection-start-line="65" selection-start-column="46" selection-end-line="65" selection-end-column="46" />
               <folding>
-                <marker date="1508524225047" expanded="true" signature="4184:4199" ph="select missi... missing_value" />
+                <marker date="1508894670172" expanded="true" signature="4362:4377" ph="select missi... missing_value" />
               </folding>
             </state>
           </provider>
@@ -124,27 +123,28 @@
       <file leaf-file-name="Driver.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/drivers/postgresql/Driver.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="289">
-              <caret line="339" column="0" lean-forward="true" selection-start-line="339" selection-start-column="0" selection-end-line="339" selection-end-column="0" />
+            <state relative-caret-position="166">
+              <caret line="156" column="28" lean-forward="false" selection-start-line="156" selection-start-column="28" selection-end-line="156" selection-end-column="28" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
-                <marker date="1508806935702" expanded="true" signature="2833:2933" ph="insert into " />
-                <marker date="1508806935702" expanded="true" signature="2833:2984" ph="insert into " />
-                <marker date="1508806935702" expanded="true" signature="3279:3347" ph="insert into " />
-                <marker date="1508806935702" expanded="true" signature="3279:3348" ph="insert into " />
-                <marker date="1508806935702" expanded="true" signature="3279:3365" ph="insert into " />
-                <marker date="1508806935702" expanded="true" signature="4362:4394" ph="select * fro... missing_value" />
-                <marker date="1508806935702" expanded="true" signature="5229:5263" ph="insert into missing_value... " />
-                <marker date="1508806935702" expanded="true" signature="7729:7819" ph="SELECT table... tables" />
-                <marker date="1508806935702" expanded="true" signature="8122:8210" ph="select count... tables" />
-                <marker date="1508806935702" expanded="true" signature="8462:8600" ph="select * fro... columns" />
-                <marker date="1508806935702" expanded="true" signature="12942:12973" ph="ALTER TABLE " />
-                <marker date="1508806935702" expanded="true" signature="13596:13630" ph="insert into " />
-                <marker date="1508806935702" expanded="true" signature="13596:13632" ph="insert into " />
-                <marker date="1508806935702" expanded="true" signature="13596:13663" ph="insert into " />
-                <marker date="1508806935702" expanded="true" signature="13596:13682" ph="insert into " />
-                <marker date="1508806935702" expanded="true" signature="13947:13976" ph="ALTER TABLE " />
-                <marker date="1508806935702" expanded="true" signature="14209:14295" ph="insert into " />
+                <marker date="1508894515178" expanded="true" signature="2833:2933" ph="insert into " />
+                <marker date="1508894515178" expanded="true" signature="2833:2984" ph="insert into " />
+                <marker date="1508894515178" expanded="true" signature="3279:3347" ph="insert into " />
+                <marker date="1508894515178" expanded="true" signature="3279:3348" ph="insert into " />
+                <marker date="1508894515178" expanded="true" signature="3279:3365" ph="insert into " />
+                <marker date="1508894515178" expanded="true" signature="4362:4394" ph="select * fro... missing_value" />
+                <marker date="1508894515178" expanded="true" signature="5229:5263" ph="insert into missing_value... " />
+                <marker date="1508894515178" expanded="true" signature="8004:8094" ph="SELECT table... tables" />
+                <marker date="1508894515178" expanded="true" signature="8397:8485" ph="select count... tables" />
+                <marker date="1508894515178" expanded="true" signature="8737:8875" ph="select * fro... columns" />
+                <marker date="1508894515178" expanded="true" signature="13217:13248" ph="ALTER TABLE " />
+                <marker date="1508894515178" expanded="true" signature="13871:13905" ph="insert into " />
+                <marker date="1508894515178" expanded="true" signature="13871:13907" ph="insert into " />
+                <marker date="1508894515178" expanded="true" signature="13871:13938" ph="insert into " />
+                <marker date="1508894515178" expanded="true" signature="13871:13957" ph="insert into " />
+                <marker date="1508894515178" expanded="true" signature="14222:14251" ph="ALTER TABLE " />
+                <marker date="1508894515178" expanded="true" signature="14484:14570" ph="insert into " />
+                <marker date="1508894515178" expanded="true" signature="15797:15823" ph="create table... missing_value" />
               </folding>
             </state>
           </provider>
@@ -218,10 +218,10 @@
         <option value="$PROJECT_DIR$/context.py" />
         <option value="$PROJECT_DIR$/tools.py" />
         <option value="$PROJECT_DIR$/sfarchive.py" />
-        <option value="$PROJECT_DIR$/sfexport.py" />
-        <option value="$PROJECT_DIR$/drivers/postgresql/Driver.py" />
         <option value="$PROJECT_DIR$/FileManager.py" />
         <option value="$PROJECT_DIR$/schema.py" />
+        <option value="$PROJECT_DIR$/drivers/postgresql/Driver.py" />
+        <option value="$PROJECT_DIR$/sfexport.py" />
       </list>
     </option>
   </component>
@@ -233,7 +233,7 @@
   </component>
   <component name="ProjectFrameBounds">
     <option name="x" value="13" />
-    <option name="y" value="71" />
+    <option name="y" value="45" />
     <option name="width" value="1909" />
     <option name="height" value="1301" />
   </component>
@@ -692,7 +692,7 @@
     </history-entry>
   </component>
   <component name="ToolWindowManager">
-    <frame x="13" y="71" width="1909" height="1301" extended-state="0" />
+    <frame x="13" y="45" width="1909" height="1301" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
@@ -769,7 +769,7 @@
           </properties>
         </breakpoint>
       </default-breakpoints>
-      <option name="time" value="165" />
+      <option name="time" value="170" />
     </breakpoint-manager>
     <watches-manager>
       <configuration name="PythonConfigurationType">
@@ -958,33 +958,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/drivers/postgresql/Driver.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="289">
-          <caret line="339" column="0" lean-forward="true" selection-start-line="339" selection-start-column="0" selection-end-line="339" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#11#0" expanded="true" />
-            <marker date="1508806935702" expanded="true" signature="2833:2933" ph="insert into " />
-            <marker date="1508806935702" expanded="true" signature="2833:2984" ph="insert into " />
-            <marker date="1508806935702" expanded="true" signature="3279:3347" ph="insert into " />
-            <marker date="1508806935702" expanded="true" signature="3279:3348" ph="insert into " />
-            <marker date="1508806935702" expanded="true" signature="3279:3365" ph="insert into " />
-            <marker date="1508806935702" expanded="true" signature="4362:4394" ph="select * fro... missing_value" />
-            <marker date="1508806935702" expanded="true" signature="5229:5263" ph="insert into missing_value... " />
-            <marker date="1508806935702" expanded="true" signature="7729:7819" ph="SELECT table... tables" />
-            <marker date="1508806935702" expanded="true" signature="8122:8210" ph="select count... tables" />
-            <marker date="1508806935702" expanded="true" signature="8462:8600" ph="select * fro... columns" />
-            <marker date="1508806935702" expanded="true" signature="12942:12973" ph="ALTER TABLE " />
-            <marker date="1508806935702" expanded="true" signature="13596:13630" ph="insert into " />
-            <marker date="1508806935702" expanded="true" signature="13596:13632" ph="insert into " />
-            <marker date="1508806935702" expanded="true" signature="13596:13663" ph="insert into " />
-            <marker date="1508806935702" expanded="true" signature="13596:13682" ph="insert into " />
-            <marker date="1508806935702" expanded="true" signature="13947:13976" ph="ALTER TABLE " />
-            <marker date="1508806935702" expanded="true" signature="14209:14295" ph="insert into " />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/context.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="396">
@@ -1003,13 +976,11 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sfexport.py">
+    <entry file="file://$PROJECT_DIR$/sfarchive.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="239">
-          <caret line="107" column="0" lean-forward="false" selection-start-line="107" selection-start-column="0" selection-end-line="107" selection-end-column="0" />
-          <folding>
-            <marker date="1508524225047" expanded="true" signature="4184:4199" ph="select missi... missing_value" />
-          </folding>
+        <state relative-caret-position="1185">
+          <caret line="80" column="0" lean-forward="false" selection-start-line="80" selection-start-column="0" selection-end-line="80" selection-end-column="0" />
+          <folding />
         </state>
       </provider>
     </entry>
@@ -1023,11 +994,41 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sfarchive.py">
+    <entry file="file://$PROJECT_DIR$/drivers/postgresql/Driver.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1185">
-          <caret line="80" column="0" lean-forward="false" selection-start-line="80" selection-start-column="0" selection-end-line="80" selection-end-column="0" />
-          <folding />
+        <state relative-caret-position="166">
+          <caret line="156" column="28" lean-forward="false" selection-start-line="156" selection-start-column="28" selection-end-line="156" selection-end-column="28" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+            <marker date="1508894515178" expanded="true" signature="2833:2933" ph="insert into " />
+            <marker date="1508894515178" expanded="true" signature="2833:2984" ph="insert into " />
+            <marker date="1508894515178" expanded="true" signature="3279:3347" ph="insert into " />
+            <marker date="1508894515178" expanded="true" signature="3279:3348" ph="insert into " />
+            <marker date="1508894515178" expanded="true" signature="3279:3365" ph="insert into " />
+            <marker date="1508894515178" expanded="true" signature="4362:4394" ph="select * fro... missing_value" />
+            <marker date="1508894515178" expanded="true" signature="5229:5263" ph="insert into missing_value... " />
+            <marker date="1508894515178" expanded="true" signature="8004:8094" ph="SELECT table... tables" />
+            <marker date="1508894515178" expanded="true" signature="8397:8485" ph="select count... tables" />
+            <marker date="1508894515178" expanded="true" signature="8737:8875" ph="select * fro... columns" />
+            <marker date="1508894515178" expanded="true" signature="13217:13248" ph="ALTER TABLE " />
+            <marker date="1508894515178" expanded="true" signature="13871:13905" ph="insert into " />
+            <marker date="1508894515178" expanded="true" signature="13871:13907" ph="insert into " />
+            <marker date="1508894515178" expanded="true" signature="13871:13938" ph="insert into " />
+            <marker date="1508894515178" expanded="true" signature="13871:13957" ph="insert into " />
+            <marker date="1508894515178" expanded="true" signature="14222:14251" ph="ALTER TABLE " />
+            <marker date="1508894515178" expanded="true" signature="14484:14570" ph="insert into " />
+            <marker date="1508894515178" expanded="true" signature="15797:15823" ph="create table... missing_value" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sfexport.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="401">
+          <caret line="65" column="46" lean-forward="false" selection-start-line="65" selection-start-column="46" selection-end-line="65" selection-end-column="46" />
+          <folding>
+            <marker date="1508894670172" expanded="true" signature="4362:4377" ph="select missi... missing_value" />
+          </folding>
         </state>
       </provider>
     </entry>

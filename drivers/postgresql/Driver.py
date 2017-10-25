@@ -155,12 +155,19 @@ class Driver(DbDriverMeta):
                 if k == 'id':
                     pkey = v
                     continue
-                if k in orig_rec and orig_rec[k] != v:
-                    namelist.append(k)
-                    data.append(v)
+                if k in orig_rec:
+                    if orig_rec[k] != v:
+                        namelist.append(k)
+                        data.append(v)
                 #
                 # !!!!! FIX DATE/DATETIME PROBLEM
                 #
+
+            if len(namelist) == 0:
+                #
+                # This is a legit case. It is probably due to overlapping lastmodifieddate in sync query where nothing
+                # actually changed.
+                return (False, False)
 
             assert(pkey != None)
             sql = 'update {} set '.format(self.fq_table(table_name))

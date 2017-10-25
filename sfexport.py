@@ -64,6 +64,7 @@ class SFExporter:
         xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
         if not timestamp is None:
             soql += " where LastModifiedDate > {}".format(querytools.sfTimestamp(timestamp))
+            soql += " order by LastModifiedDate ASC"
         cur = dbdriver.cursor
         counter = 0
         journal = self.context.filemgr.create_journal(sobject_name)
@@ -86,9 +87,12 @@ class SFExporter:
                        x.write(json.dumps(trec, indent=4, default=tools.json_serial))
                     raise ex
 
-                counter += 1
-                if counter % 100 == 0:
-                    print('processed {}'.format(counter))
+                if i or u:
+                    counter += 1
+                    if counter % 100 == 0:
+                        print('processed {}'.format(counter))
+                    if counter % 1000 == 0:
+                        dbdriver.commit()
             dbdriver.commit()
             print('processed {}'.format(counter))
             if counter > 0:
