@@ -95,6 +95,9 @@ class SchemaManager:
         if len(self.filters) > 0 and name not in self.filters:
             return False
 
+        if sobj['name'].endswith('_del__c'):
+            return False
+
         if not sobj['custom']:
             if not name in ['Account','Opportunity','User','Contact','Asset','Campaign','CampaignMember','Contract','Lead','RecordType']:
                 return False
