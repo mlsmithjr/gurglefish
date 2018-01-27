@@ -63,11 +63,11 @@ class FileManager(object):
             return json.load(configfile)['configuration']['sobjects']
 
     def get_config(self):
-            with open(os.path.join(self.basedir, 'db', 'config.json'), 'r') as configfile:
+            with open(os.path.join(self.basedir, 'db', self.envname, 'config.json'), 'r') as configfile:
                 return json.load(configfile)
 
     def save_config(self, configmap):
-        with open(os.path.join(self.basedir, 'db', 'config.json'), 'w') as configfile:
+        with open(os.path.join(self.basedir, 'db', self.envname, 'config.json'), 'w') as configfile:
             json.dump(configmap, configfile, indent=4)
 
     def get_sobject_map(self, sobject_name):
