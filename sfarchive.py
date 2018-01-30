@@ -1,6 +1,7 @@
 import json
 
 import tools
+from db.mdatadb import ConfigEnv, MDEngine
 from schema import SchemaManager
 from sfexport import SFExporter
 from sfimport import SFImporter
@@ -49,7 +50,6 @@ if __name__ == '__main__':
     context = tools.setup_env(envname)
     schema_mgr = SchemaManager(context)
 
-
     if args.init is not None:
         sobject_list = schema_mgr.inspect()
         sobjectconfig = []
@@ -65,7 +65,6 @@ if __name__ == '__main__':
         thelist = schema_mgr.inspect()
         for entry in thelist:
             print(entry['name'])
-
 
     if args.sync is not None:
         exp = SFExporter(context)
@@ -103,3 +102,6 @@ if __name__ == '__main__':
             #        if not stamp is None:
             #            print('stamp=' + stamp)
             #        exp.export_copy(dbmgr, sf, tablename, timestamp=stamp)
+
+
+

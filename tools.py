@@ -2,7 +2,7 @@ import datetime
 
 import DriverManager
 from context import Context
-from db.mdatadb import MDEngine
+from db.mdatadb import MDEngine, ConfigEnv
 from salesforce.sfapi import SFClient
 
 
@@ -18,6 +18,11 @@ def setup_env(envname) -> Context:
     return Context(env, dbdriver, sf)
 
 
+def save_env(cfg: ConfigEnv) -> None:
+    mde = MDEngine()
+    mde.save(cfg)
+
+
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
 
@@ -25,7 +30,8 @@ def json_serial(obj):
         serial = obj.isoformat()
         return serial
     return str(obj)
-    raise TypeError("Type not serializable")
+    #raise TypeError("Type not serializable")
+
 
 def dict_list_to_dict(alist, keyfield):
     assert(keyfield is not None)
@@ -36,5 +42,3 @@ def dict_list_to_dict(alist, keyfield):
         key = item[keyfield]
         result[key] = item
     return result
-
-

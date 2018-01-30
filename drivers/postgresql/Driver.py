@@ -25,7 +25,9 @@ class Driver(DbDriverMeta):
     def connect(self, dbenv: ConfigEnv):
         self.dbenv = dbenv
         dbport = dbenv.dbport if not dbenv.dbport is None and len(dbenv.dbport) > 2 else '5432'
-        self.db = psycopg2.connect("dbname='{0}' user='{1}' password='{2}' host='{3}' port='{4}'".format(dbenv.dbname, dbenv.dbuser, dbenv.dbpass, dbenv.dbhost, dbport))
+        self.db = psycopg2.connect(
+            "dbname='{0}' user='{1}' password='{2}' host='{3}' port='{4}'".format(dbenv.dbname, dbenv.dbuser,
+                                                                                  dbenv.dbpass, dbenv.dbhost, dbport))
         self._bucket = 'db_' + dbenv.dbname
         self.storagedir = os.path.join(config.storagedir, 'db', self.dbenv.dbname)
         self.schema_name = dbenv.schema
@@ -60,35 +62,35 @@ class Driver(DbDriverMeta):
 
     def verify_db_setup(self):
         if not self.table_exists('gf_mdata_sync_stats'):
-            ddl =   'create table {}.gf_mdata_sync_stats (' +\
-                    '  id         serial primary key, '+\
-                    '  table_name text not null, '+\
-                    '  inserts    numeric(8) not null, '+\
-                    '  updates    numeric(8) not null, '+\
-                    '  sync_start timestamp not null default now(), '+\
-                    '  sync_end   timestamp not null default now(), '+\
-                    '  sync_since timestamp not null)'
+            ddl = 'create table {}.gf_mdata_sync_stats (' + \
+                  '  id         serial primary key, ' + \
+                  '  table_name text not null, ' + \
+                  '  inserts    numeric(8) not null, ' + \
+                  '  updates    numeric(8) not null, ' + \
+                  '  sync_start timestamp not null default now(), ' + \
+                  '  sync_end   timestamp not null default now(), ' + \
+                  '  sync_since timestamp not null)'
             ddl = ddl.format(self.schema_name)
             self.exec_dml(ddl)
         if not self.table_exists('gf_mdata_schema_chg'):
-            ddl =   'create table {}.gf_mdata_schema_chg (' +\
-                    '  id         serial primary key, '+\
-                    '  table_name text not null, '+\
-                    '  col_name   text not null, '+\
-                    '  operation  text not null, '+\
-                    '  date_added timestamp not null default now())'
+            ddl = 'create table {}.gf_mdata_schema_chg (' + \
+                  '  id         serial primary key, ' + \
+                  '  table_name text not null, ' + \
+                  '  col_name   text not null, ' + \
+                  '  operation  text not null, ' + \
+                  '  date_added timestamp not null default now())'
             ddl = ddl.format(self.schema_name)
             self.exec_dml(ddl)
 
     def insert_sync_stats(self, table_name, sync_start, sync_end, sync_since, inserts, updates):
         cur = self.cursor
-        dml = 'insert into {}.gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) '+\
-                    'values (%s,%s,%s,%s,%s,%s)'
+        dml = 'insert into {}.gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) ' + \
+              'values (%s,%s,%s,%s,%s,%s)'
         cur.execute(dml.format(self.schema_name), [table_name, inserts, updates, sync_start, sync_end, sync_since])
         self.db.commit()
         cur.close()
 
-    def insert_schema_change(self, table_name:string, col_name:string, operation:string):
+    def insert_schema_change(self, table_name: string, col_name: string, operation: string):
         cur = self.cursor
         dml = 'insert into {}.gf_mdata_schema_chg (table_name, col_name, operation) values (%s,%s,%s)'
         cur.execute(dml.format(self.schema_name), [table_name, col_name, operation])
@@ -111,8 +113,8 @@ class Driver(DbDriverMeta):
             print(ex)
         return 0
 
-    def upsert(self, cur, table_name, trec : dict, journal = None):
-        assert('Id' in trec)
+    def upsert(self, cur, table_name, trec: dict, journal=None):
+        assert ('Id' in trec)
 
         cur.execute("select * from {} where id = '{}'".format(self.fq_table(table_name), trec['Id']))
         tmp_rec = cur.fetchone()
@@ -193,23 +195,26 @@ class Driver(DbDriverMeta):
         if table_name == self.last_table_name:
             return self.last_table_fields
         cur = self.new_map_cursor
-        sql =   "select column_name, data_type, character_maximum_length, ordinal_position "+\
-                "from information_schema.columns "+\
-                "where table_name = '{}' "+\
-                "order by ordinal_position"
+        sql = "select column_name, data_type, character_maximum_length, ordinal_position " + \
+              "from information_schema.columns " + \
+              "where table_name = '{}' " + \
+              "order by ordinal_position"
         cur.execute(sql.format(table_name))
         columns = cur.fetchall()
         cur.close()
         self.last_table_name = table_name
         self.last_table_fields = dict()
         for c in columns:
-            self.last_table_fields[c['column_name']] = { 'column_name': c['column_name'], 'data_type': c['data_type'], 'character_maximum_length': c['character_maximum_length'], 'ordinal_position': c['ordinal_position']}
+            self.last_table_fields[c['column_name']] = {'column_name': c['column_name'], 'data_type': c['data_type'],
+                                                        'character_maximum_length': c['character_maximum_length'],
+                                                        'ordinal_position': c['ordinal_position']}
         return self.last_table_fields
 
     def get_db_tables(self) -> List[GetDbTablesResult]:
         table_cursor = self.db.cursor()
         table_cursor.execute(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema=%s ORDER BY table_name", (self.schema_name,))
+            "SELECT table_name FROM information_schema.tables WHERE table_schema=%s ORDER BY table_name",
+            (self.schema_name,))
         tables = table_cursor.fetchall()
         table_cursor.close()
         result = [GetDbTablesResult(row[0]) for row in tables]
@@ -234,16 +239,16 @@ class Driver(DbDriverMeta):
         col_cursor.close()
         return cols
 
-    def make_column(self, sobject_name:str, field:dict) -> dict:
+    def make_column(self, sobject_name: str, field: dict) -> list:
         """
             returns:
                 list(dict(
                     fieldlen, dml, table_name, sobject_name, sobject_field, db_field, fieldtype
                 ))
         """
-        assert(sobject_name != None)
-        assert(field != None)
-#        if field is None: return None,None
+        assert (sobject_name != None)
+        assert (field != None)
+        #        if field is None: return None,None
 
         sql = ''
         fieldname = field['name']
@@ -261,7 +266,7 @@ class Driver(DbDriverMeta):
             sql += 'time '
         elif fieldtype == 'id':
             sql += 'char(15) primary key '
-            #fieldname = 'sfid'
+            # fieldname = 'sfid'
         elif fieldtype == 'reference':
             # refto = field['referenceTo'][0]
             sql += 'char(15) '
@@ -289,23 +294,24 @@ class Driver(DbDriverMeta):
             #
             # this is a weird exception.  Handle differently
             #
-            newfieldlist = []
-            prefix = field['name']
-            if field['name'].endswith('Address'):
-                prefix = prefix[0:-7]
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'city', 'db_field': prefix+'City', 'fieldtype': 'address'})
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'country', 'db_field': prefix+'Country', 'fieldtype': 'address'})
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'postalCode', 'db_field': prefix+'PostalCode', 'fieldtype': 'address'})
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'state', 'db_field': prefix+'State', 'fieldtype': 'address'})
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'street', 'db_field': prefix+'Street', 'fieldtype': 'address'})
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'longitude', 'db_field': prefix+'Longitude', 'fieldtype': 'address'})
-            newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'latitude', 'db_field': prefix+'Latitude', 'fieldtype': 'address'})
-            return newfieldlist
+            # newfieldlist = []
+            # prefix = field['name']
+            # if field['name'].endswith('Address'):
+            #     prefix = prefix[0:-7]
+            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'city', 'db_field': prefix+'City', 'fieldtype': 'address'})
+            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'country', 'db_field': prefix+'Country', 'fieldtype': 'address'})
+            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'postalCode', 'db_field': prefix+'PostalCode', 'fieldtype': 'address'})
+            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'state', 'db_field': prefix+'State', 'fieldtype': 'address'})
+            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'street', 'db_field': prefix+'Street', 'fieldtype': 'address'})
+            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'longitude', 'db_field': prefix+'Longitude', 'fieldtype': 'address'})
+            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'latitude', 'db_field': prefix+'Latitude', 'fieldtype': 'address'})
+            # return newfieldlist
         else:
             print(field)
             raise Exception('field {0} unknown type {1} for sobject {2}'.format(fieldname, fieldtype, sobject_name))
 
-        newfieldlist = [{'fieldlen': fieldlen, 'dml': sql, 'table_name': sobject_name, 'sobject_field': field['name'], 'db_field': fieldname, 'fieldtype': fieldtype}]
+        newfieldlist = [{'fieldlen': fieldlen, 'dml': sql, 'table_name': sobject_name, 'sobject_field': field['name'],
+                         'db_field': fieldname, 'fieldtype': fieldtype}]
         return newfieldlist
 
     def alter_table_add_columns(self, new_field_defs, sobject_name):
@@ -315,7 +321,7 @@ class Driver(DbDriverMeta):
         for field in new_field_defs:
             col_def = self.make_column(sobject_name, field)
             if col_def is None:
-#                print('unsupported column type for {} - skipped'.format(field['name']))
+                #                print('unsupported column type for {} - skipped'.format(field['name']))
                 continue
             col = col_def[0]
             ddl = ddl_template.format(self.fq_table(sobject_name), col['db_field'], col['dml'])
@@ -350,7 +356,7 @@ class Driver(DbDriverMeta):
         cur = self.db.cursor()
         for field in field_defs:
             if field['externalId'] or field['idLookup']:
-                if field['name'].lower() != 'id':       # Id is already set as the pkey
+                if field['name'].lower() != 'id':  # Id is already set as the pkey
                     ddl = ddl_template.format(sobject_name, field['name'], self.fq_table(sobject_name), field['name'])
                     cur.execute(ddl)
         self.db.commit()
@@ -386,11 +392,10 @@ class Driver(DbDriverMeta):
     def make_transformer(self, sobject_name, table_name, fieldlist):
 
         parser = 'from transformutils import id, bl, db, dt, st, ts, inte\n\n'
-        parser +=   'def parse(rec):\n' +\
-                    '  result = dict()\n' +\
-                    '  def push(name, value):\n' +\
-                    '    result[name] = value\n\n'
-
+        parser += 'def parse(rec):\n' + \
+                  '  result = dict()\n' + \
+                  '  def push(name, value):\n' + \
+                  '    result[name] = value\n\n'
 
         for fieldmap in fieldlist:
             fieldtype = fieldmap['fieldtype']
@@ -398,7 +403,8 @@ class Driver(DbDriverMeta):
             fieldlen = fieldmap['fieldlen']
             dbfield = fieldmap['db_field']
             p_parser = ''
-            if fieldtype in ('picklist', 'multipicklist', 'string', 'textarea', 'email', 'phone', 'url', 'encryptedstring'):
+            if fieldtype in (
+            'picklist', 'multipicklist', 'string', 'textarea', 'email', 'phone', 'url', 'encryptedstring'):
                 p_parser = 'push("{}", st(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'combobox':
                 p_parser = 'push("{}", st(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
@@ -425,7 +431,8 @@ class Driver(DbDriverMeta):
             elif fieldtype in ('base64', 'anyType'):  ##### not implemented yet <<<<<<
                 return None
             elif fieldtype == 'address':
-                p_parser = 'push("{}", st(rec, "{}", "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldmap['subfield'], fieldlen)
+                p_parser = 'push("{}", st(rec, "{}", "{}", fieldlen={}))\n'.format(dbfield, fieldname,
+                                                                                   fieldmap['subfield'], fieldlen)
 
             parser += '  ' + p_parser
         parser += '  return result'

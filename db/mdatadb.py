@@ -26,7 +26,7 @@ class ConfigEnv(object):
         return s
 
     @schema.setter
-    def schema_set(self, name):
+    def schema(self, name):
         self.fields['schema'] = name
 
     @property
@@ -34,7 +34,7 @@ class ConfigEnv(object):
         return self.fields['login']
 
     @login.setter
-    def sflogin(self, l):
+    def login(self, l):
         self.fields['login'] = l
 
     @property
@@ -130,6 +130,9 @@ class MDEngine(object):
         else:
             self.data = []
 
+    def exists(self):
+        return os.path.exists(self.dbpath)
+
     def close(self):
         pass
 
@@ -146,3 +149,21 @@ class MDEngine(object):
             if e.id == envname:
                 return e
         return None
+
+    def create_db_config(self) -> None:
+        fields = {
+            "id": "",
+            "schema": "",
+            "sflogin": "",
+            "password": "",
+            "consumer_key": "",
+            "consumer_secret": "",
+            "authurl": "",
+            "dbvendor": "postgresql",
+            "dbname": "",
+            "dbuser": "",
+            "dbpass": "",
+            "dbhost": "",
+            "dbport": "" }
+
+        return { 'metadata': fields }
