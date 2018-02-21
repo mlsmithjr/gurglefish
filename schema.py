@@ -104,8 +104,8 @@ class SchemaManager:
         if sobj['customSetting'] == True or sobj['replicateable'] == False or sobj['updateable'] == False:
             return False
         if name.endswith('__Tag') or name.endswith('__History') or name.endswith('__Feed'): return False
-        if name.find('__') != name.find('__c'):
-            return False
+#        if name.find('__') != name.find('__c'):
+#            return False
         if name[0:4] == 'Apex' or name in ('scontrol','weblink','profile'):
             return False
         return True
