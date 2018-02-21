@@ -104,8 +104,11 @@ class SFExporter:
             cur.close()
             journal.close()
 
-    def export_copy(self, sobject_name, just_sample = False, timestamp=None, path=None):
+    def export_copy(self, sobject_name, schema_mgr : SchemaManager, just_sample = False, timestamp=None, path=None):
         if path is None: path = './'
+
+        if not self.context.dbdriver.table_exists(sobject_name):
+            schema_mgr.create_table(sobject_name)
 
         xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
 

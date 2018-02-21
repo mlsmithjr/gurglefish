@@ -1,7 +1,6 @@
 import json
 
 import tools
-from db.mdatadb import ConfigEnv, MDEngine
 from schema import SchemaManager
 from sfexport import SFExporter
 from sfimport import SFImporter
@@ -85,7 +84,7 @@ if __name__ == '__main__':
         exp = SFExporter(context)
         table_list = make_arg_list(args.export)
         for tablename in table_list:
-            exp.export_copy(tablename, just_sample=args.sample is not None)
+            exp.export_copy(tablename, schema_mgr, just_sample=args.sample is not None)
 
     if args.load and len(args.load) > 0:
         imp = SFImporter(context, schema_mgr)
