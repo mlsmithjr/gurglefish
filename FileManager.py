@@ -59,7 +59,7 @@ class FileManager(object):
             return None
 
     def get_configured_tables(self):
-        with open(os.path.join(self.basedir, 'db', 'config.json'), 'r') as configfile:
+        with open(os.path.join(self.basedir, 'db', self.envname, 'config.json'), 'r') as configfile:
             return json.load(configfile)['configuration']['sobjects']
 
     def get_config(self):

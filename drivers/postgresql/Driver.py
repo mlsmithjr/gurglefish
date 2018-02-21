@@ -171,7 +171,7 @@ class Driver(DbDriverMeta):
                 # actually changed.
                 return (False, False)
 
-            assert(pkey != None)
+            assert(not pkey is None)
             sql = 'update {} set '.format(self.fq_table(table_name))
             sql = 'update {} set '.format(self.fq_table(table_name))
             sets = []
@@ -246,8 +246,8 @@ class Driver(DbDriverMeta):
                     fieldlen, dml, table_name, sobject_name, sobject_field, db_field, fieldtype
                 ))
         """
-        assert (sobject_name != None)
-        assert (field != None)
+        assert (not sobject_name is None)
+        assert (not field is None)
         #        if field is None: return None,None
 
         sql = ''
@@ -431,7 +431,7 @@ class Driver(DbDriverMeta):
             elif fieldtype in ('base64', 'anyType'):  ##### not implemented yet <<<<<<
                 return None
             elif fieldtype == 'address':
-                p_parser = 'push("{}", st(rec, "{}", "{}", fieldlen={}))\n'.format(dbfield, fieldname,
+                p_parser = 'push("{}", stsub(rec, "{}", "{}", fieldlen={}))\n'.format(dbfield, fieldname,
                                                                                    fieldmap['subfield'], fieldlen)
 
             parser += '  ' + p_parser

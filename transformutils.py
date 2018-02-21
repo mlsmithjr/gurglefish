@@ -40,26 +40,33 @@ def db(rec, name, fieldlen):
         return rec[name]
     return None
 
-def st(rec, name, subname = None, fieldlen = 0):
+def st(rec, name, fieldlen = 0):
     if name in rec and rec[name] != None:
         node = rec[name]
-        if subname is not None:
-            if subname in node:
-                val = node[subname][0:fieldlen]
-                return scrub(val)
-            return None
         return scrub(node[0:fieldlen])
     return None
 
+def stsub(rec, name, subname, fieldlen = 0):
+    if name in rec and rec[name] != None:
+        node = rec[name]
+        if subname in node:
+            val = node[subname][0:fieldlen]
+            return scrub(val)
+        return None
+    return None
 
-def pyTimestamp(t):
+
+def pyTimestamp(t) -> datetime:
     return datetime.strptime(t[0:19], '%Y-%m-%dT%H:%M:%S')
 
-def pyDate(d):
+def pyDate(d) -> datetime:
     return datetime.strptime(d, '%Y-%m-%d').date()
 
 def scrub(s):
-    s = s.replace('\\t',' ')
-    if '\0' in s:
-        s = ''.join([c for c in s if c != '\0'])
+    if '\\t' in s or '\0' in s:
+        s = s.replace('\\t',' ')
+        s = s.replace('\0','')
+#    if '\0' in s:
+#        s = ''.join([c for c in s if c != '\0'])
     return s
+

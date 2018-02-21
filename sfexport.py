@@ -1,4 +1,4 @@
-import csv
+
 import gzip
 import json
 import operator
@@ -130,7 +130,7 @@ class SFExporter:
             print('{}: exporting {} records: 0%'.format(sobject_name, totalSize), end='\r', flush=True)
         else:
             print('{}: exporting {} records'.format(sobject_name, totalSize))
-        with gzip.open(os.path.join(self.storagedir, sobject_name + '.exp.gz'), 'wb', compresslevel=6) as export:
+        with gzip.open(os.path.join(self.storagedir, sobject_name + '.exp.gz'), 'wb', compresslevel=5) as export:
             for rec in self.context.sfclient.query(soql):
                 trec = xlate_handler.parse(rec)
                 parts = []
@@ -157,6 +157,7 @@ class SFExporter:
                 counter += 1
                 if counter % 2000 == 0 and sys.stdout.isatty():
                     print('{}: exporting {} records: {:.0f}%\r'.format(sobject_name, totalSize, (counter / totalSize) * 100), end='\r', flush=True)
+            export.close()
             print("\nexported {} records{}".format(counter, ' '*10))
 
 
