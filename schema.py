@@ -89,7 +89,6 @@ class SchemaManager:
         :param sobj:Name of sobject/table
         :return: True or False
         """
-
         name = sobj['name']
 
         if len(self.filters) > 0 and name not in self.filters:
