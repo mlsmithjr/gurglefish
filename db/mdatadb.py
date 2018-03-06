@@ -3,7 +3,7 @@ import json
 __author__ = 'mark'
 
 import os
-from config import BASE_DIR, storagedir
+from config import storagedir
 
 
 class ConfigEnv(object):
