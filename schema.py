@@ -29,6 +29,16 @@ class SchemaManager:
     def inspect(self):
         solist = self.sfclient.getSobjectList()
         solist = [sobj for sobj in solist if self.accept_sobject(sobj)]
+        for so in solist:
+            #
+            # enrich the data with the package name
+            #
+            name = so['name']
+            pos = name.find('__')
+            if pos != -1 and pos < len(name) - 5:
+                so['package'] = name[0:pos]
+            else:
+                so['package'] = 'unpackaged'
         return solist
 
     # def get_os_tables(self):
