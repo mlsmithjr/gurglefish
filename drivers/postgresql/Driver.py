@@ -210,6 +210,13 @@ class Driver(DbDriverMeta):
                                                         'ordinal_position': c['ordinal_position']}
         return self.last_table_fields
 
+    def record_count(self, table_name):
+        table_cursor = self.db.cursor()
+        table_cursor.execute(f"SELECT count(*) FROM {self.schema_name}.{table_name}")
+        records = table_cursor.fetchone()
+        table_cursor.close()
+        return records
+
     def get_db_tables(self) -> List[GetDbTablesResult]:
         table_cursor = self.db.cursor()
         table_cursor.execute(

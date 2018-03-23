@@ -115,7 +115,7 @@ gurglefishApp.controller('CatalogDBController', ['$scope','$http', function($sco
                 if (value.selected) {
                     // at least one selected
                     flag = true;
-                    return;
+
                 }
             });
             $scope.selectedSObject.selected = flag;
