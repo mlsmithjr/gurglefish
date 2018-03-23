@@ -54,7 +54,7 @@ def service_sobjects(envname):
 
 @app.route("/services/sobject/<envname>/<sobject>/enable")
 @cross_origin(origin='localhost',headers=['Content-Type','Authorization'])
-def service_sobjects(envname, sobject):
+def service_sobject_enable(envname, sobject):
     payload = services.api.enable_sobject(envname, sobject)
     return json.dumps(payload)
 
