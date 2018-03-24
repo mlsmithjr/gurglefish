@@ -51,9 +51,9 @@ def check_if_can_enable(envname, sobject_name) -> (bool, str):
         if ctx.dbdriver.table_exists(sobject_name):
             local_records = ctx.dbdriver.record_count(sobject_name)
             if abs(local_records - sf_records) > MAX_ALLOWED_SEED_RECORDS:
-                return False, 'Manual load required'
+                return False, 'Too many records to begin sync - initial manual load required'
         if sf_records > MAX_ALLOWED_SEED_RECORDS:
-            return False, 'Manual load required'
+            return False, 'Too many records to begin sync - initial manual load required'
     except Exception as ex:
         print(ex)
         return False, 'Manual load required'

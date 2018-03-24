@@ -63,7 +63,9 @@ def service_sobject_enable(envname, sobject):
 def handle_message(envname, sobject_name):
     print('checking ' + sobject_name)
     ok, reason = services.api.check_if_can_enable(envname, sobject_name)
+    print(f'ok={ok}, reason={reason}')
     emit('enable-check-result', { 'can_enable': ok, 'sobject': sobject_name, 'reason': reason })
+
 
 if __name__ == "__main__":
     global mde
