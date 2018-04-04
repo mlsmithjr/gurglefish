@@ -40,6 +40,21 @@ def enable_sobject(envname, sobject_name):
             return { 'success': True }
     return { 'success': False, 'message': f'SObject {sobject_name} not found in {envname}' }
 
+def disable_sobject(envname, sobject_name):
+    try:
+        ctx = tools.setup_env(envname)
+    except Exception as ex:
+        print(ex)
+        return {'success': False, 'message': 'environment not found' }
+    config = ctx.filemgr.get_config()
+    for so in config['configuration']['sobjects']:
+        if so['name'] == sobject_name:
+            so['enabled'] = False;
+            ctx.filemgr.save_config(config)
+            return { 'success': True }
+    return { 'success': False, 'message': f'SObject {sobject_name} not found in {envname}' }
+
+
 def check_if_can_enable(envname, sobject_name) -> (bool, str):
     try:
         ctx = tools.setup_env(envname)

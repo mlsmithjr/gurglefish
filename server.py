@@ -58,6 +58,12 @@ def service_sobject_enable(envname, sobject):
     payload = services.api.enable_sobject(envname, sobject)
     return json.dumps(payload)
 
+@app.route("/services/sobject/<envname>/<sobject>/disable")
+@cross_origin(origin='localhost',headers=['Content-Type','Authorization'])
+def service_sobject_disable(envname, sobject):
+    payload = services.api.disable_sobject(envname, sobject)
+    return json.dumps(payload)
+
 @socketio.on('enable-check')
 #@cross_origin(origin='localhost',headers=['Content-Type','Authorization'])
 def handle_message(envname, sobject_name):
@@ -65,6 +71,7 @@ def handle_message(envname, sobject_name):
     ok, reason = services.api.check_if_can_enable(envname, sobject_name)
     print(f'ok={ok}, reason={reason}')
     emit('enable-check-result', { 'can_enable': ok, 'sobject': sobject_name, 'reason': reason })
+
 
 
 if __name__ == "__main__":
