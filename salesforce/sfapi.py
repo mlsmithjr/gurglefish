@@ -1,11 +1,19 @@
+import binascii
 import logging
 import json
 import operator
+import os
+import time
+
+from suds.client import Client
+import suds
 from typing import List
 
 import requests
 
 MAX_BATCH_SIZE=100
+_METADATA_TIMEOUT=300
+_METADATA_POLL_SLEEP=10
 _API_VERSION = '40.0'
 
 
@@ -23,8 +31,12 @@ class SFClient:
     service_url = None
     _username = None
     _bucket = None
+    wsdl_dir = None
+    partner_soap = None
+    metadata_soap = None
 
-    def __init__(self):
+    def __init__(self, wsdl_dir = None):
+        self.wsdl_dir = wsdl_dir
         self.logger = logging.getLogger(__name__)
 
     def login(self, consumer_key, consumer_secret, username, password, server_url):
@@ -42,6 +54,34 @@ class SFClient:
         if 'error' in payload: raise Exception(payload['error_description'])
         self.logger.debug('payload=%s' % (rsp.text,))
         self.construct(payload['access_token'],  payload['instance_url'])
+        #
+        # load the WSDLs now
+        #
+        if self.wsdl_dir is not None:
+            print('loading partner wsdl')
+            pathname = os.path.join(self.wsdl_dir, 'partner.wsdl')
+            #if not os.path.isfile(pathname):
+                # not found, get from Salesforce
+            #    self._fetch_and_save_wsdl(pathname, self.service_url + '/soap/wsdl.jsp')
+            if os.path.isfile(pathname):
+                self.partner_soap = Client('file://' + pathname)
+
+            print('loading metadata wsdl')
+            pathname = os.path.join(self.wsdl_dir, 'metadata.wsdl')
+            #if not os.path.isfile(pathname):
+                # not found, get from Salesforce
+            #    self._fetch_and_save_wsdl(pathname, self.service_url + '/services/wsdl/metadata')
+            if os.path.isfile(pathname):
+                self.metadata_soap = Client('file://' + pathname)
+        print('finished loading')
+        self.soap_login = self.partner_soap.service.login(username, password)
+
+        self.soap_retrieve_catalog()
+
+ #   def _fetch_and_save_wsdl(self, pathname, url):
+ #       response = self.client.get(url)
+ #       with open(pathname, 'w') as f:
+ #           f.write(response.text)
 
     def construct(self,  token,  server_url):
         self.access_token = token
@@ -53,6 +93,57 @@ class SFClient:
 
     def close(self):
         pass
+
+    def soap_get_custom_objects(self):
+        sid = self.metadata_soap.factory.create('SessionHeader')
+        sid.sessionId = self.soap_login.sessionId
+        #self.partner_soap.set_options(soapheaders=sid)
+        #self.partner_soap.set_options(location=self.soap_login.serverUrl)
+
+        self.metadata_soap.set_options(soapheaders=sid)
+        self.metadata_soap.set_options(location=self.soap_login.metadataServerUrl)
+
+        query = self.metadata_soap.factory.create('ListMetadataQuery')
+        query.type = 'CustomObject'
+        props = self.metadata_soap.service.listMetadata([query], _API_VERSION)
+        return props
+
+    def _make_soap_sobjects_package(self):
+        props = self.soap_get_custom_objects()
+        ptm = self.metadata_soap.factory.create('PackageTypeMembers')
+        ptm.name = 'CustomObject'
+        ptm.members = [prop.fullName for prop in props]
+        return ptm
+
+    def soap_retrieve_catalog(self):
+        request = self.metadata_soap.factory.create('RetrieveRequest')
+        request.apiVersion = _API_VERSION
+        pkg = self.metadata_soap.factory.create('Package')
+        pkg.fullName = ['*']
+        pkg.version = _API_VERSION
+        pkg.apiAccessLevel = 'Unrestricted'
+        pkgtypes = []
+        pkgtypes.append(self._make_soap_sobjects_package())
+        pkg.types = pkgtypes
+        request.unpackaged = [pkg]
+        request.singlePackage = False
+
+        countdown = _METADATA_TIMEOUT
+        asyncResult = self.metadata_soap.service.retrieve(request)
+        asyncResultId = asyncResult.id
+        while True:
+            time.sleep(_METADATA_POLL_SLEEP)
+            countdown -= _METADATA_POLL_SLEEP
+            if countdown <= 0: break
+            retrieveResult = self.metadata_soap.service.checkRetrieveStatus([asyncResultId], False)[0]
+            if retrieveResult: break
+
+        result = self.metadata_soap.service.checkRetrieveStatus([asyncResultId], True)
+
+        zip = binascii.a2b_base64(result.zipFile)
+        out = open('/tmp/tmp.zip', 'wb')
+        out.write(zip)
+        out.close()
 
 
     def get_sobject_definition(self, name):
