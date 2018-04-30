@@ -1,8 +1,6 @@
 import datetime
-import os
 
 import DriverManager
-import config
 from context import Context
 from db.mdatadb import MDEngine, ConfigEnv
 from salesforce.sfapi import SFClient
@@ -12,7 +10,7 @@ def setup_env(envname) -> Context:
     mde = MDEngine()
     env = mde.get_db_env(envname)
 
-    sf = SFClient(os.path.join(config.storagedir, 'db', envname))
+    sf = SFClient()
     sf.login(env.consumer_key, env.consumer_secret, env.login, env.password, env.authurl)
 
     dbdriver = DriverManager.Manager().getDriver('postgresql')
