@@ -98,6 +98,7 @@ class Driver(DbDriverMeta):
         cur.close()
 
     def bulk_load(self, tablename):
+        tablename = tablename.lower()
         if not os.path.isfile('/usr/bin/psql'):
             raise Exception('/usr/bin/psql not found. Please install postgresql client to use bulk loading')
 

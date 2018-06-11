@@ -1,7 +1,7 @@
 import tools
 from db.mdatadb import MDEngine
 
-MAX_ALLOWED_SEED_RECORDS=20000
+MAX_ALLOWED_SEED_RECORDS = 50000
 
 
 def envlist():
@@ -22,37 +22,39 @@ def sobjects(envname):
         ctx = tools.setup_env(envname)
     except Exception as ex:
         print(ex)
-        return {'success': False, 'message': 'environment not found' }
+        return {'success': False, 'message': 'environment not found'}
     config = ctx.filemgr.get_configured_tables()
-    return  config
+    return config
+
 
 def enable_sobject(envname, sobject_name):
     try:
         ctx = tools.setup_env(envname)
     except Exception as ex:
         print(ex)
-        return {'success': False, 'message': 'environment not found' }
+        return {'success': False, 'message': 'environment not found'}
     config = ctx.filemgr.get_config()
     for so in config['configuration']['sobjects']:
         if so['name'] == sobject_name:
-            so['enabled'] = True;
+            so['enabled'] = True
             ctx.filemgr.save_config(config)
-            return { 'success': True }
-    return { 'success': False, 'message': f'SObject {sobject_name} not found in {envname}' }
+            return {'success': True}
+    return {'success': False, 'message': f'SObject {sobject_name} not found in {envname}'}
+
 
 def disable_sobject(envname, sobject_name):
     try:
         ctx = tools.setup_env(envname)
     except Exception as ex:
         print(ex)
-        return {'success': False, 'message': 'environment not found' }
+        return {'success': False, 'message': 'environment not found'}
     config = ctx.filemgr.get_config()
     for so in config['configuration']['sobjects']:
         if so['name'] == sobject_name:
-            so['enabled'] = False;
+            so['enabled'] = False
             ctx.filemgr.save_config(config)
-            return { 'success': True }
-    return { 'success': False, 'message': f'SObject {sobject_name} not found in {envname}' }
+            return {'success': True}
+    return {'success': False, 'message': f'SObject {sobject_name} not found in {envname}'}
 
 
 def check_if_can_enable(envname, sobject_name) -> (bool, str):
@@ -73,4 +75,3 @@ def check_if_can_enable(envname, sobject_name) -> (bool, str):
         print(ex)
         return False, 'Manual load required'
     return True, None
-

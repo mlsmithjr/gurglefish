@@ -1,4 +1,3 @@
-
 import gzip
 import json
 import operator
@@ -7,15 +6,12 @@ import os
 import sys
 
 import datetime
-#import yaml
-import config
 import querytools
 import tools
 from context import Context
 from schema import SchemaManager
 
 __author__ = 'mark'
-
 
 
 def _escape(val):
@@ -28,19 +24,19 @@ def _escape(val):
 
 class SFExporter:
 
-    def __init__(self, context : Context):
+    def __init__(self, context: Context):
         self.context = context
         self.storagedir = context.filemgr.exportdir
         os.makedirs(self.storagedir, exist_ok=True)
 
-    def sync_tables(self, schema_mgr : SchemaManager, filterlist = None):
+    def sync_tables(self, schema_mgr: SchemaManager, filterlist=None):
         table_config = self.context.filemgr.get_configured_tables()
         tablelist = [table for table in table_config if table['enabled']]
-#        if filterlist:
-#            filterlist = [name.lower() for name in filterlist]
-#        tablelist = [table for table in schema_mgr.get_os_tables() if table['exists']]
-#        if filterlist:
-#            tablelist = [table for table in tablelist if table['name'] in filterlist]
+        #        if filterlist:
+        #            filterlist = [name.lower() for name in filterlist]
+        #        tablelist = [table for table in schema_mgr.get_os_tables() if table['exists']]
+        #        if filterlist:
+        #            tablelist = [table for table in tablelist if table['name'] in filterlist]
         for table in tablelist:
             tablename = table['name'].lower()
             print('{}:'.format(tablename))
@@ -48,7 +44,8 @@ class SFExporter:
                 schema_mgr.create_table(tablename)
             else:
                 # check for column changes and process accordingly
-                proceed = schema_mgr.update_sobject(tablename, allow_add=table['auto-create-columns'], allow_drop=table['auto-drop-columns'])
+                proceed = schema_mgr.update_sobject(tablename, allow_add=table['auto-create-columns'],
+                                                    allow_drop=table['auto-drop-columns'])
                 if not proceed:
                     print('sync of {} skipped due to warnings'.format(tablename))
                     return
@@ -59,6 +56,7 @@ class SFExporter:
     def etl(self, soql, sobject_name, timestamp=None, path=None):
         if path is None: path = './'
 
+        sobject_name = sobject_name.lower()
         dbdriver = self.context.dbdriver
 
         xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
@@ -84,7 +82,7 @@ class SFExporter:
                         updated += 1
                 except Exception as ex:
                     with open('/tmp/debug.json', 'w') as x:
-                       x.write(json.dumps(trec, indent=4, default=tools.json_serial))
+                        x.write(json.dumps(trec, indent=4, default=tools.json_serial))
                     raise ex
 
                 if i or u:
@@ -96,7 +94,8 @@ class SFExporter:
             dbdriver.commit()
             print('processed {}'.format(counter))
             if counter > 0:
-                dbdriver.insert_sync_stats(sobject_name, sync_start, datetime.datetime.now(), timestamp, inserted, updated)
+                dbdriver.insert_sync_stats(sobject_name, sync_start, datetime.datetime.now(), timestamp, inserted,
+                                           updated)
         except Exception as ex:
             dbdriver.rollback()
             raise ex
@@ -104,9 +103,10 @@ class SFExporter:
             cur.close()
             journal.close()
 
-    def export_copy(self, sobject_name, schema_mgr : SchemaManager, just_sample = False, timestamp=None, path=None):
+    def export_copy(self, sobject_name, schema_mgr: SchemaManager, just_sample=False, timestamp=None, path=None):
         if path is None: path = './'
 
+        sobject_name = sobject_name.lower()
         if not self.context.dbdriver.table_exists(sobject_name):
             schema_mgr.create_table(sobject_name)
 
@@ -156,10 +156,11 @@ class SFExporter:
                 export.write(bytes('\t'.join(parts) + '\n', 'utf-8'))
                 counter += 1
                 if counter % 2000 == 0 and sys.stdout.isatty():
-                    print('{}: exporting {} records: {:.0f}%\r'.format(sobject_name, totalSize, (counter / totalSize) * 100), end='\r', flush=True)
+                    print('{}: exporting {} records: {:.0f}%\r'.format(sobject_name, totalSize,
+                                                                       (counter / totalSize) * 100), end='\r',
+                          flush=True)
             export.close()
-            print("\nexported {} records{}".format(counter, ' '*10))
-
+            print("\nexported {} records{}".format(counter, ' ' * 10))
 
 #     def exportYAML(self, db, sf, sobject_name, timestamp=None, path=None):
 #         if path is None: path = './'
