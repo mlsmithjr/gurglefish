@@ -84,6 +84,8 @@ class Driver(DbDriverMeta):
 
     def insert_sync_stats(self, table_name, sync_start, sync_end, sync_since, inserts, updates):
         cur = self.cursor
+        if sync_since is None:
+            sync_since = datetime.datetime(1970,1,1,0,0,0)
         dml = 'insert into {}.gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) ' + \
               'values (%s,%s,%s,%s,%s,%s)'
         cur.execute(dml.format(self.schema_name), [table_name, inserts, updates, sync_start, sync_end, sync_since])
@@ -213,7 +215,7 @@ class Driver(DbDriverMeta):
 
     def record_count(self, table_name):
         table_cursor = self.db.cursor()
-        table_cursor.execute(f"SELECT count(*) FROM {self.schema_name}.{table_name}")
+        table_cursor.execute('SELECT count(*) FROM {}.{}'.format(self.schema_name,table_name))
         records = table_cursor.fetchone()
         table_cursor.close()
         return records

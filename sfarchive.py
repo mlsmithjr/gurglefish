@@ -41,6 +41,8 @@ if __name__ == '__main__':
     parser.add_argument("--inspect", help="inspect objects", nargs="*", metavar="object|@file")
     parser.add_argument("--init", help="initialize configuration", nargs="*")
     parser.add_argument("--sample", help="only export a sample of data", nargs="*")
+    parser.add_argument("--enable", help="enable one or more tables to sync", nargs="+")
+    parser.add_argument("--disable", help="enable one or more tables to sync", nargs="+")
     args = parser.parse_args()
 
     envname = args.env
@@ -53,7 +55,7 @@ if __name__ == '__main__':
         sobject_list = schema_mgr.inspect()
         sobjectconfig = []
         for sobject in sobject_list:
-            name = sobject['name']
+            name = sobject['name'].lower()
             node = { 'name': name, 'enabled':False, 'auto_drop_columns': True, 'auto_create_columns': True, 'sync_schedule': 'always', 'pkgname': sobject['package'] }
             sobjectconfig.append(node)
         configmap = {'configuration': { 'sobjects': sobjectconfig }}
@@ -64,6 +66,24 @@ if __name__ == '__main__':
         thelist = schema_mgr.inspect()
         for entry in thelist:
             print(entry['name'])
+
+    if args.enable is not None:
+        table_config = context.filemgr.get_configured_tables()
+        to_enable = [a.lower() for a in args.enable]
+        for entry in table_config:
+            if entry['name'] in to_enable:
+                print(f"enabling {entry['name']}")
+                entry['enabled'] = True
+        context.filemgr.save_configured_tables(table_config)
+
+    if args.disable is not None:
+        table_config = context.filemgr.get_configured_tables()
+        to_disable = [a.lower() for a in args.disable]
+        for entry in table_config:
+            if entry['name'] in to_disable:
+                print(f"disabling {entry['name']}")
+                entry['enabled'] = False
+        context.filemgr.save_configured_tables(table_config)
 
     if args.sync is not None:
         exp = SFExporter(context)
