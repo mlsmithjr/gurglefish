@@ -44,8 +44,8 @@ class SFExporter:
                 schema_mgr.create_table(tablename)
             else:
                 # check for column changes and process accordingly
-                proceed = schema_mgr.update_sobject(tablename, allow_add=table['auto-create-columns'],
-                                                    allow_drop=table['auto-drop-columns'])
+                proceed = schema_mgr.update_sobject(tablename, allow_add=table['auto_create_columns'],
+                                                    allow_drop=table['auto_drop_columns'])
                 if not proceed:
                     print('sync of {} skipped due to warnings'.format(tablename))
                     return

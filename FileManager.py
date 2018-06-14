@@ -17,9 +17,9 @@ class FileManager(object):
         os.makedirs(self.schemadir, exist_ok=True)
         os.makedirs(self.exportdir, exist_ok=True)
 
-    # def create_journal(self, sobject_name):
-    #     f = gzip.open(os.path.join(self.exportdir, '{}_journal.log.gz'.format(sobject_name)), 'wb')
-    #     return f
+    def create_journal(self, sobject_name):
+        f = gzip.open(os.path.join(self.exportdir, '{}_journal.log.gz'.format(sobject_name)), 'wb')
+        return f
 
     def get_global_filters(self):
         try:
