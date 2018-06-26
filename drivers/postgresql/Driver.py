@@ -29,7 +29,7 @@ class Driver(DbDriverMeta):
             "dbname='{0}' user='{1}' password='{2}' host='{3}' port='{4}'".format(dbenv.dbname, dbenv.dbuser,
                                                                                   dbenv.dbpass, dbenv.dbhost, dbport))
         self._bucket = 'db_' + dbenv.dbname
-        self.storagedir = os.path.join(config.storagedir, 'db', self.dbenv.dbname)
+        self.storagedir = os.path.join(config.storagedir, 'db', self.dbenv.id)
         self.schema_name = dbenv.schema
         self.verify_db_setup()
         return True
@@ -61,6 +61,7 @@ class Driver(DbDriverMeta):
         return self.db.cursor()
 
     def verify_db_setup(self):
+        self.exec_dml(f'CREATE SCHEMA IF NOT EXISTS {self.schema_name}')
         if not self.table_exists('gf_mdata_sync_stats'):
             ddl = 'create table {}.gf_mdata_sync_stats (' + \
                   '  id         serial primary key, ' + \

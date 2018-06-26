@@ -9,6 +9,9 @@ from salesforce.sfapi import SFClient
 def setup_env(envname) -> Context:
     mde = MDEngine()
     env = mde.get_db_env(envname)
+    if env is None:
+        print(f'Configuration for {envname} not found')
+        exit(1)
 
     sf = SFClient()
     sf.login(env.consumer_key, env.consumer_secret, env.login, env.password, env.authurl)

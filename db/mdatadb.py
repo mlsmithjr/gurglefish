@@ -3,6 +3,7 @@ import json
 __author__ = 'mark'
 
 import os
+import configparser
 from config import storagedir
 
 
@@ -121,12 +122,16 @@ class ConfigEnv(object):
 class MDEngine(object):
     def __init__(self, dbpath=None):
         if dbpath is None:
-            dbpath = os.path.join(storagedir, 'mdata.json')
+#            dbpath = os.path.join(storagedir, 'mdata.json')
+            dbpath = os.path.join(storagedir, 'connections.ini')
         self.dbpath = dbpath
         if os.path.exists(dbpath):
-            with open(dbpath, 'r') as f:
-                self.data = json.loads(f.read())['metadata']
-                self.data = [ConfigEnv(item) for item in self.data]
+            config = configparser.ConfigParser()
+            config.read(self.dbpath)
+            self.data = [ConfigEnv(config[section]) for section in config.sections()]
+#            with open(dbpath, 'r') as f:
+#                self.data = json.loads(f.read())['metadata']
+#                self.data = [ConfigEnv(item) for item in self.data]
         else:
             self.data = []
 
@@ -150,20 +155,3 @@ class MDEngine(object):
                 return e
         return None
 
-    def create_db_config(self) -> None:
-        fields = {
-            "id": "",
-            "schema": "",
-            "sflogin": "",
-            "password": "",
-            "consumer_key": "",
-            "consumer_secret": "",
-            "authurl": "",
-            "dbvendor": "postgresql",
-            "dbname": "",
-            "dbuser": "",
-            "dbpass": "",
-            "dbhost": "",
-            "dbport": "" }
-
-        return { 'metadata': fields }
