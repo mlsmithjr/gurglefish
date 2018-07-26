@@ -404,9 +404,9 @@ class Driver(DbDriverMeta):
 
         parser = 'from transformutils import id, bl, db, dt, st, ts, inte\n\n'
         parser += 'def parse(rec):\n' + \
-                  '  result = dict()\n' + \
-                  '  def push(name, value):\n' + \
-                  '    result[name] = value\n\n'
+                  '  result = dict()\n\n'
+#                  '  def push(name, value):\n' + \
+#                  '    result[name] = value\n\n'
 
         for fieldmap in fieldlist:
             fieldtype = fieldmap['fieldtype']
@@ -416,33 +416,33 @@ class Driver(DbDriverMeta):
             p_parser = ''
             if fieldtype in (
             'picklist', 'multipicklist', 'string', 'textarea', 'email', 'phone', 'url', 'encryptedstring'):
-                p_parser = 'push("{}", st(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = st(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'combobox':
-                p_parser = 'push("{}", st(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = st(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'datetime':
-                p_parser = 'push("{}", ts(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = ts(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'date':
-                p_parser = 'push("{}", dt(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = dt(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'time':
-                p_parser = 'push("{}", tm(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = tm(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'id':
-                p_parser = 'push("{}", id(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = id(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'reference':
-                p_parser = 'push("{}", id(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = id(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'boolean':
-                p_parser = 'push("{}", bl(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = bl(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'double':
-                p_parser = 'push("{}", db(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = db(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'currency':
-                p_parser = 'push("{}", db(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = db(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'int':
-                p_parser = 'push("{}", inte(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = inte(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'percent':
-                p_parser = 'push("{}", db(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = db(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype in ('base64', 'anyType'):  ##### not implemented yet <<<<<<
                 return None
             elif fieldtype == 'address':
-                p_parser = 'push("{}", stsub(rec, "{}", "{}", fieldlen={}))\n'.format(dbfield, fieldname,
+                p_parser = 'result["{}"] = stsub(rec, "{}", "{}", fieldlen={}))\n'.format(dbfield, fieldname,
                                                                                    fieldmap['subfield'], fieldlen)
 
             parser += '  ' + p_parser
