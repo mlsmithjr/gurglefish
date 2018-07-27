@@ -6,8 +6,7 @@ from typing import List
 import datetime
 from fastcache import lru_cache
 
-import psycopg2
-import psycopg2.extras
+import mysql.connector
 
 import config
 import tools
@@ -16,20 +15,16 @@ from db.mdatadb import ConfigEnv
 
 
 class Driver(DbDriverMeta):
-    schema_name = None
 
-    driver_type = "postgresql"
+    driver_type = "mysql"
 
     def connect(self, dbenv: ConfigEnv):
         self.dbenv = dbenv
-        dbport = dbenv.dbport if not dbenv.dbport is None and len(dbenv.dbport) > 2 else '5432'
-        self.db = psycopg2.connect(
-            "dbname='{0}' user='{1}' password='{2}' host='{3}' port='{4}'".format(dbenv.dbname, dbenv.dbuser,
-                                                                                  dbenv.dbpass, dbenv.dbhost, dbport))
-        self._bucket = 'db_' + dbenv.dbname
+        dbport = dbenv.dbport if not dbenv.dbport is None and len(dbenv.dbport) > 2 else '3306'
+        self.db = mysql.connector.connect(user=dbenv.dbuser, password=dbenv.dbpass, host=dbenv.dbhost, port=dbport, database=dbenv.dbname)
         self.storagedir = os.path.join(config.storagedir, 'db', self.dbenv.id)
-        self.schema_name = dbenv.schema
         self.verify_db_setup()
+        self.schema_name = dbenv.dbname
         return True
 
     def exec_dml(self, dml):
@@ -52,20 +47,19 @@ class Driver(DbDriverMeta):
 
     @property
     def new_map_cursor(self):
-        return self.db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        return self.db.cursor(dictionary=True)
 
     @property
     def cursor(self):
         return self.db.cursor()
 
     def verify_db_setup(self):
-        self.exec_dml(f'CREATE SCHEMA IF NOT EXISTS {self.schema_name}')
         if not self.table_exists('gf_mdata_sync_stats'):
             ddl = 'create table {}.gf_mdata_sync_stats (' + \
-                  '  id         serial primary key, ' + \
-                  '  table_name text not null, ' + \
-                  '  inserts    numeric(8) not null, ' + \
-                  '  updates    numeric(8) not null, ' + \
+                  '  id         int primary auto increment, ' + \
+                  '  table_name varchar(200) not null, ' + \
+                  '  inserts    int not null, ' + \
+                  '  updates    int not null, ' + \
                   '  sync_start timestamp not null default now(), ' + \
                   '  sync_end   timestamp not null default now(), ' + \
                   '  sync_since timestamp not null)'
@@ -73,10 +67,10 @@ class Driver(DbDriverMeta):
             self.exec_dml(ddl)
         if not self.table_exists('gf_mdata_schema_chg'):
             ddl = 'create table {}.gf_mdata_schema_chg (' + \
-                  '  id         serial primary key, ' + \
-                  '  table_name text not null, ' + \
-                  '  col_name   text not null, ' + \
-                  '  operation  text not null, ' + \
+                  '  id         int  primary auto increment, ' + \
+                  '  table_name varchar(200) not null, ' + \
+                  '  col_name   varchar(100) not null, ' + \
+                  '  operation  varchar(50) not null, ' + \
                   '  date_added timestamp not null default now())'
             ddl = ddl.format(self.schema_name)
             self.exec_dml(ddl)
@@ -85,32 +79,28 @@ class Driver(DbDriverMeta):
         cur = self.cursor
         if sync_since is None:
             sync_since = datetime.datetime(1970,1,1,0,0,0)
-        dml = 'insert into {}.gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) ' + \
+        dml = f'insert into {self.schema_name}.gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) ' + \
               'values (%s,%s,%s,%s,%s,%s)'
-        cur.execute(dml.format(self.schema_name), [table_name, inserts, updates, sync_start, sync_end, sync_since])
+        cur.execute(dml, (table_name, inserts, updates, sync_start, sync_end, sync_since))
         self.db.commit()
         cur.close()
 
     def insert_schema_change(self, table_name: string, col_name: string, operation: string):
         cur = self.cursor
-        dml = 'insert into {}.gf_mdata_schema_chg (table_name, col_name, operation) values (%s,%s,%s)'
-        cur.execute(dml.format(self.schema_name), [table_name, col_name, operation])
+        dml = f'insert into {self.schema_name}.gf_mdata_schema_chg (table_name, col_name, operation) values (%s,%s,%s)'
+        cur.execute(dml,(table_name, col_name, operation))
         self.db_commit()
         cur.close()
 
     def bulk_load(self, tablename):
         tablename = tablename.lower()
-        if not os.path.isfile('/usr/bin/psql'):
-            raise Exception('/usr/bin/psql not found. Please install postgresql client to use bulk loading')
+        if not os.path.isfile('/usr/bin/mysql'):
+            raise Exception('/usr/bin/mysql not found. Please install MySQL/MariaDB client to use bulk loading')
 
         exportfile = os.path.join(self.storagedir, 'export', tablename + '.exp.gz')
-        cmd = r"\copy {} from program 'gzip -dc < {}'".format(self.fq_table(tablename), exportfile)
-        cmdargs = ['/usr/bin/psql', '-h', self.dbhost, '-d', self.dbname, '-c', cmd]
+        cmd = f"gzip -dc < {exportfile} | mysql -u {self.dbenv.dbuser} -p {self.dbenv.dbpass} {self.dbenv.dbname} --host={self.dbhost} --port={self.dbport}"
         try:
-            outputbytes = subprocess.check_output(cmdargs)
-            result = outputbytes.decode('utf-8').strip()
-            if result.startswith('COPY'):
-                return int(result[5:])
+            subprocess.run(cmd, shell=True, check=True)
         except Exception as ex:
             print(ex)
         return 0
@@ -196,7 +186,7 @@ class Driver(DbDriverMeta):
     @lru_cache(maxsize=5, typed=False)
     def get_table_fields(self, table_name):
         cur = self.new_map_cursor
-        sql = "select column_name, data_type, character_maximum_length, ordinal_position " + \
+        sql = "select column_name, column_type, character_maximum_length, ordinal_position " + \
               "from information_schema.columns " + \
               "where table_name = '{}' " + \
               "order by ordinal_position"
@@ -265,7 +255,7 @@ class Driver(DbDriverMeta):
         if fieldtype in ('picklist', 'multipicklist', 'email', 'phone', 'url'):
             sql += 'varchar ({0}) '.format(fieldlen)
         elif fieldtype in ('string', 'encryptedstring', 'textarea', 'combobox'):
-            sql += 'text '
+            sql += f'varchar({fieldlen}) '
         elif fieldtype == 'datetime':
             sql += 'timestamp '
         elif fieldtype == 'date':
@@ -323,7 +313,7 @@ class Driver(DbDriverMeta):
         return newfieldlist
 
     def alter_table_add_columns(self, new_field_defs, sobject_name):
-        ddl_template = 'ALTER TABLE {} ADD COLUMN {} {}'
+        ddl_template = 'ALTER TABLE {} ADD {} {}'
         cur = self.db.cursor()
         newcols = []
         for field in new_field_defs:
@@ -360,13 +350,16 @@ class Driver(DbDriverMeta):
         cur.close()
 
     def maintain_indexes(self, sobject_name, field_defs):
-        ddl_template = 'CREATE INDEX IF NOT EXISTS {}_{} ON {} ({})'
+        ddl_template = 'CREATE INDEX {}_{} ON {} ({})'
         cur = self.db.cursor()
         for field in field_defs:
             if field['externalId'] or field['idLookup']:
                 if field['name'].lower() != 'id':  # Id is already set as the pkey
-                    ddl = ddl_template.format(sobject_name, field['name'], self.fq_table(sobject_name), field['name'])
-                    cur.execute(ddl)
+                    try:
+                        cur.execute(f'drop index {sobject_name}_{field["name"]} on {sobject_name}')
+                    finally:
+                        ddl = ddl_template.format(sobject_name, field['name'], self.fq_table(sobject_name), field['name'])
+                        cur.execute(ddl)
         self.db.commit()
         cur.close()
 
@@ -446,7 +439,6 @@ class Driver(DbDriverMeta):
         parser += '  return result'
         return parser
 
-    @lru_cache(maxsize=10, typed=False)
     def fq_table(self, tablename):
         return '"{}"."{}"'.format(self.schema_name, tablename)
 
@@ -461,6 +453,7 @@ class Driver(DbDriverMeta):
 
     def format_for_export(self, trec, tablefields, fieldmap):
         parts = []
+        outcolumns = []
         for tf in tablefields:
             n = tf['column_name']
             f = fieldmap[n]
@@ -468,8 +461,9 @@ class Driver(DbDriverMeta):
             if soqlf in trec:
                 val = trec[soqlf]
                 if val is None:
-                    parts.append('\\N')
+                    pass
                 else:
+                    outcolumns.append(n)
                     if isinstance(val, bool):
                         parts.append('True' if val else 'False')
                     elif isinstance(val, datetime.datetime):
@@ -478,6 +472,7 @@ class Driver(DbDriverMeta):
                         parts.append(self._escape(val))
                     else:
                         parts.append(str(val))
-            else:
-                parts.append('\\N')
-        return bytes('\t'.join(parts) + '\n', 'utf-8')
+        columns = ','.join(outcolumns)
+        placeholders = ','.join('%s' * len(columns))
+        dml = f'insert into {self.schema_name}.{tablename} ({columns}) values ({placeholders});\n'
+        return dml
