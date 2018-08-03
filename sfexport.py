@@ -96,7 +96,7 @@ class SFExporter:
             cur.close()
             journal.close()
 
-    def export_copy(self, sobject_name, schema_mgr: SchemaManager, just_sample=False, timestamp=None, path=None):
+    def export_copy_sql(self, sobject_name, schema_mgr: SchemaManager, just_sample=False, timestamp=None, path=None):
         if path is None: path = './'
 
         sobject_name = sobject_name.lower()

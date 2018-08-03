@@ -49,6 +49,9 @@ if __name__ == '__main__':
 
     #    env, dbmgr, sf = tools.setup_env(envname)
     context = tools.setup_env(envname)
+    if context is None:
+        exit(1)
+
     schema_mgr = SchemaManager(context)
 
     if args.init is not None:
@@ -96,15 +99,15 @@ if __name__ == '__main__':
     if args.schema is not None:
         if len(args.schema) > 0:
             final_args = make_arg_list(args.schema)
-            schema_mgr.exportSObject(final_args)
+            schema_mgr.prepare_sobjects(final_args)
         else:
-            schema_mgr.export_sobjects()
+            schema_mgr.prepare_configured_sobjects()
 
     if args.export is not None:
         exp = SFExporter(context)
         table_list = make_arg_list(args.export)
         for tablename in table_list:
-            exp.export_copy(tablename, schema_mgr, just_sample=args.sample is not None)
+            exp.export_copy_sql(tablename, schema_mgr, just_sample=args.sample is not None)
 
     if args.load and len(args.load) > 0:
         imp = SFImporter(context, schema_mgr)

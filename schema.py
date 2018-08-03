@@ -41,46 +41,12 @@ class SchemaManager:
                 so['package'] = 'unpackaged'
         return solist
 
-    # def get_os_tables(self):
-    #     table_list = []
-    #     for root, dirs, files in os.walk(self.storagedir):
-    #         for dir in dirs:
-    #             try:
-    #                 sqlname = os.path.join(self.storagedir, dir, '{}.sql'.format(dir))
-    #                 if os.path.isfile(sqlname):
-    #                     item = {'name': dir}
-    #                     item['exists'] = self.driver.table_exists(dir)
-    #                     table_list.append(item)
-    #             except Exception as ex:
-    #                 print(ex)
-    #     return table_list
+    def prepare_configured_sobjects(self):
+        table_config = self.context.filemgr.get_configured_tables()
+        tablelist = [table['name'] for table in table_config if table['enabled']]
+        return self.prepare_sobjects(tablelist)
 
-    # def create_tables(self, filterlist = None):
-    #     for root, dirs, files in os.walk(self.storagedir):
-    #         for dir in dirs:
-    #             if not filterlist is None and not dir in filterlist:
-    #                 continue
-    #             try:
-    #                 sqlname = os.path.join(self.storagedir, dir, '{}.sql'.format(dir))
-    #                 if os.path.isfile(sqlname):
-    #                     if not self.driver.table_exists(dir):
-    #                         with open(sqlname, 'r') as f:
-    #                             sql = f.read()
-    #                             print('creating ' + dir)
-    #                             self.driver.exec_dml(sql)
-    #             except Exception as ex:
-    #                 print(ex)
-
-    # def drop_tables(self):
-    #     for root, dirs, files in os.walk(self.storagedir):
-    #         for dir in dirs:
-    #             try:
-    #                 if self.driver.table_exists(dir):
-    #                     self.driver.exec_dml('drop table ' + dir)
-    #             except Exception as ex:
-    #                 print(ex)
-
-    def exportSObject(self, names):
+    def prepare_sobjects(self, names):
         docs = []
         for name in names:
             try:
@@ -90,7 +56,7 @@ class SchemaManager:
                 print('Unable to retrieve {}, skipping'.format(name))
                 print(ex)
                 raise ex
-        return self.process_sobjects(docs)
+        return self._process_sobjects(docs)
 
     def accept_sobject(self, sobj:dict) -> bool:
         """
@@ -119,20 +85,11 @@ class SchemaManager:
             return False
         return True
 
-    # def export_sobjects(self, filter = None):
-    #     print('loading sobjects')
-    #     solist = self.sfclient.getSobjectList()
-    #     if filter:
-    #         solist = [sobj for sobj in solist if sobj in filter]
-    #     else:
-    #         solist = [sobj for sobj in solist if self.accept_sobject(sobj)]
-    #     return self.process_sobjects(solist)
-
-    def process_sobjects(self, solist):
+    def _process_sobjects(self, solist):
         self.sodict = dict([(so['name'], so) for so in solist])
         sobject_names = set([so['name'].lower() for so in solist])
         for new_sobject_name in sorted(sobject_names):
-            self.process_sobject(new_sobject_name)
+            self._process_sobject(new_sobject_name)
 
     def create_table(self, sobject_name):
         new_sobject_name = sobject_name.lower()
@@ -165,7 +122,7 @@ class SchemaManager:
         except Exception as ex:
             print(ex)
 
-    def process_sobject(self, sobject_name):
+    def _process_sobject(self, sobject_name):
         new_sobject_name = sobject_name.lower()
 
         fields = self.sfclient.get_field_list(new_sobject_name)

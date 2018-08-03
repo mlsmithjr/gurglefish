@@ -12,7 +12,6 @@ class GetDbTablesResult(object):
     def __init__(self, name):
         self.tablename = name
 
-
     @property
     def tablename(self):
         return self.name
@@ -22,45 +21,10 @@ class GetDbTablesResult(object):
         self.name = name
 
 
-class GetMappedTablesResult(object):
-
-    def __init__(self, record):
-        self.tablename = record['table_name']
-        self.sobject = record['sobject']
-
-    @property
-    def tablename(self):
-        return self.tablename
-
-    @property
-    def sobjectname(self):
-        return self.sobject
-
-class FieldMapResult(object):
-    def __init__(self, record):
-        self.sobject_field = record['sobject_field']
-        self.db_field = record['db_field']
-        self.fieldtype = record['fieldtype']
-
-    @property
-    def sobject_field(self):
-        return self.sobject_field
-
-    @property
-    def db_field(self):
-        return self.db_field
-
-    @property
-    def fieldtype(self):
-        return self.fieldtype
 
 
 class DbDriverMeta(object):
     __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def exec_dml(self, dml):
-        pass
 
     @abstractmethod
     def connect(self, env:ConfigEnv):
@@ -72,18 +36,6 @@ class DbDriverMeta(object):
 
     @abstractmethod
     def table_exists(self, table_name: string):
-        pass
-
-    @abstractmethod
-    def get_mapped_tables(self):
-        pass
-
-    @abstractmethod
-    def get_field_map(self, sobject_name: string):
-        pass
-
-    @abstractmethod
-    def is_table_mapped(self, sobject) -> bool:
         pass
 
     @abstractmethod
@@ -99,19 +51,35 @@ class DbDriverMeta(object):
         pass
 
     @abstractmethod
-    def add_column(self, sobject_name:string, fielddef:dict):
+    def format_for_export(self, trec, tablefields, fieldmap):
         pass
 
     @abstractmethod
-    def drop_column(self, table_name, column_name):
+    def make_transformer(self, sobject_name, table_name, fieldlist):
         pass
 
     @abstractmethod
-    def drop_table(self, table_name):
+    def make_select_statement(self, field_names, sobject_name):
         pass
 
     @abstractmethod
-    def add_table(self, table_name):
+    def maintain_indexes(self, sobject_name, field_defs):
+        pass
+
+    @abstractmethod
+    def record_count(self, table_name):
+        pass
+
+    @abstractmethod
+    def get_table_fields(self, table_name):
+        pass
+
+    @abstractmethod
+    def upsert(self, cur, table_name, trec: dict, journal=None):
+        pass
+
+    @abstractmethod
+    def bulk_load(self, tablename):
         pass
 
 

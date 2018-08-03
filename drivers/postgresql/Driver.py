@@ -23,14 +23,17 @@ class Driver(DbDriverMeta):
     def connect(self, dbenv: ConfigEnv):
         self.dbenv = dbenv
         dbport = dbenv.dbport if not dbenv.dbport is None and len(dbenv.dbport) > 2 else '5432'
-        self.db = psycopg2.connect(
-            "dbname='{0}' user='{1}' password='{2}' host='{3}' port='{4}'".format(dbenv.dbname, dbenv.dbuser,
-                                                                                  dbenv.dbpass, dbenv.dbhost, dbport))
-        self._bucket = 'db_' + dbenv.dbname
-        self.storagedir = os.path.join(config.storagedir, 'db', self.dbenv.id)
-        self.schema_name = dbenv.schema
-        self.verify_db_setup()
-        return True
+        try:
+            self.db = psycopg2.connect(
+                "dbname='{0}' user='{1}' password='{2}' host='{3}' port='{4}'".format(dbenv.dbname, dbenv.dbuser,
+                                                                                      dbenv.dbpass, dbenv.dbhost, dbport))
+            self.storagedir = os.path.join(config.storagedir, 'db', self.dbenv.id)
+            self.schema_name = dbenv.schema
+            self.verify_db_setup()
+            return True
+        except Exception as ex:
+            print(f'>> Error >> Unable to log into {dbenv.dbname} at {dbenv.dbhost}:{dbport} for user {dbenv.dbuser}')
+            return False
 
     def exec_dml(self, dml):
         cur = self.db.cursor()

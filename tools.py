@@ -14,10 +14,15 @@ def setup_env(envname) -> Context:
         exit(1)
 
     sf = SFClient()
-    sf.login(env.consumer_key, env.consumer_secret, env.login, env.password, env.authurl)
+    try:
+        sf.login(env.consumer_key, env.consumer_secret, env.login, env.password, env.authurl)
+    except Exception as ex:
+        print(f'>> Error >> Unable to connect to {env.authurl} as {env.login}')
+        return None
 
     dbdriver = DriverManager.Manager().getDriver('postgresql')
-    dbdriver.connect(env)
+    if not dbdriver.connect(env):
+        return None
     return Context(env, dbdriver, sf)
 
 
