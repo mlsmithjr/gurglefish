@@ -416,33 +416,33 @@ class Driver(DbDriverMeta):
             p_parser = ''
             if fieldtype in (
             'picklist', 'multipicklist', 'string', 'textarea', 'email', 'phone', 'url', 'encryptedstring'):
-                p_parser = 'result["{}"] = st(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = st(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'combobox':
-                p_parser = 'result["{}"] = st(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = st(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'datetime':
-                p_parser = 'result["{}"] = ts(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = ts(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'date':
-                p_parser = 'result["{}"] = dt(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = dt(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'time':
-                p_parser = 'result["{}"] = tm(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = tm(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'id':
-                p_parser = 'result["{}"] = id(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = id(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'reference':
-                p_parser = 'result["{}"] = id(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = id(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'boolean':
-                p_parser = 'result["{}"] = bl(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = bl(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'double':
-                p_parser = 'result["{}"] = db(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = db(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'currency':
-                p_parser = 'result["{}"] = db(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = db(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'int':
-                p_parser = 'result["{}"] = inte(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = inte(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'percent':
-                p_parser = 'result["{}"] = db(rec, "{}", fieldlen={}))\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = 'result["{}"] = db(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype in ('base64', 'anyType'):  ##### not implemented yet <<<<<<
                 return None
             elif fieldtype == 'address':
-                p_parser = 'result["{}"] = stsub(rec, "{}", "{}", fieldlen={}))\n'.format(dbfield, fieldname,
+                p_parser = 'result["{}"] = stsub(rec, "{}", "{}", fieldlen={})\n'.format(dbfield, fieldname,
                                                                                    fieldmap['subfield'], fieldlen)
 
             parser += '  ' + p_parser
@@ -453,7 +453,7 @@ class Driver(DbDriverMeta):
     def fq_table(self, tablename):
         return '"{}"."{}"'.format(self.schema_name, tablename)
 
-    @classmethod
+    @staticmethod
     def _escape(val):
         if '\\' in val or '\n' in val or '\r' in val or '\t' in val:
             val = val.replace('\\', '\\\\')
@@ -478,7 +478,7 @@ class Driver(DbDriverMeta):
                     elif isinstance(val, datetime.datetime):
                         parts.append(val.isoformat())
                     elif isinstance(val, str):
-                        parts.append(self._escape(val))
+                        parts.append(Driver._escape(val))
                     else:
                         parts.append(str(val))
             else:

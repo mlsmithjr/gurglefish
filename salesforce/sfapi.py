@@ -236,7 +236,6 @@ class SFClient:
             else:
               break
 
-
     def _invokePatchREST(self, objectName, objectId, url_data):
         self.logger.debug('patch invoking /services/data/v%s/sobjects/%s/%s' % (_API_VERSION, objectName, objectId))
         response = self.client.patch('%s/services/data/v%s/sobjects/%s/%s/' % (self.service_url, _API_VERSION, objectName, objectId), data=url_data)
