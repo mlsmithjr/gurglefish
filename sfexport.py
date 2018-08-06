@@ -32,7 +32,7 @@ class SFExporter:
         #            tablelist = [table for table in tablelist if table['name'] in filterlist]
         for table in tablelist:
             tablename = table['name'].lower()
-            print('{}:'.format(tablename))
+            print(f'sync {tablename}')
             if not self.context.dbdriver.table_exists(tablename):
                 schema_mgr.create_table(tablename)
             else:
@@ -122,7 +122,7 @@ class SFExporter:
         if sys.stdout.isatty():
             print('{}: exporting {} records: 0%'.format(sobject_name, totalSize), end='\r', flush=True)
         else:
-            print('{}: exporting {} records'.format(sobject_name, totalSize))
+            print(f'{sobject_name}: exporting {totalSize} records')
         with gzip.open(os.path.join(self.storagedir, sobject_name + '.exp.gz'), 'wb', compresslevel=5) as export:
             for rec in self.context.sfclient.query(soql):
                 trec = xlate_handler.parse(rec)
@@ -134,5 +134,6 @@ class SFExporter:
                                                                        (counter / totalSize) * 100), end='\r',
                           flush=True)
             export.close()
-            print("\nexported {} records{}".format(counter, ' ' * 10))
+            if sys.stdout.isatty():
+                print("\nexported {} records{}".format(counter, ' ' * 10))
 

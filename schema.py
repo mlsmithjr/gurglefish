@@ -1,4 +1,4 @@
-
+import logging
 import os
 
 from context import Context
@@ -18,6 +18,7 @@ class SchemaManager:
     refs = {}
     sodict = dict()
     filters = []
+    log = logging.getLogger('schema')
 
     def __init__(self, context : Context):
         self.driver = context.dbdriver
@@ -116,8 +117,9 @@ class SchemaManager:
 
         try:
             if not self.driver.table_exists(sobject_name):
-                print('creating ' + sobject_name)
+                self.log.info(f'  creating {sobject_name}')
                 self.driver.exec_dml(create_table_dml)
+                self.log.info(f'  creating indexes')
                 self.driver.maintain_indexes(sobject_name, fields)
         except Exception as ex:
             print(ex)
@@ -165,24 +167,27 @@ class SchemaManager:
         dropped_fields = table_field_names - sobj_field_names
         if len(new_fields) > 0:
             if not allow_add:
-                print('warning: new columns found for table {}, auto-create of new columns disabled'.format(sobject_name))
-            new_field_defs = [sobj_columns[f] for f in new_fields]
-            newfieldmap = self.driver.alter_table_add_columns(new_field_defs, sobject_name)
-            if len(newfieldmap) > 0:
-                self.driver.maintain_indexes(sobject_name, new_field_defs)
+                self.log.warn('  warning: new columns found for table {}, auto-create of new columns disabled, skipping'.format(sobject_name))
+            else:
+                self.log.info(f'  new columns found, updating table and indexes')
+                new_field_defs = [sobj_columns[f] for f in new_fields]
+                newfieldmap = self.driver.alter_table_add_columns(new_field_defs, sobject_name)
+                if len(newfieldmap) > 0:
+                    self.driver.maintain_indexes(sobject_name, new_field_defs)
 
-                fieldmap = self.filemgr.get_sobject_map(sobject_name)
-                fieldmap.extend(newfieldmap)
-                self.filemgr.save_sobject_map(sobject_name, fieldmap)
-                select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap], sobject_name)
-                self.filemgr.save_sobject_query(sobject_name, select)
-                parser = self.driver.make_transformer(sobject_name, sobject_name, fieldmap)
-                self.filemgr.save_sobject_transformer(sobject_name, parser)
+                    fieldmap = self.filemgr.get_sobject_map(sobject_name)
+                    fieldmap.extend(newfieldmap)
+                    self.filemgr.save_sobject_map(sobject_name, fieldmap)
+                    select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap], sobject_name)
+                    self.filemgr.save_sobject_query(sobject_name, select)
+                    parser = self.driver.make_transformer(sobject_name, sobject_name, fieldmap)
+                    self.filemgr.save_sobject_transformer(sobject_name, parser)
 
-                self.filemgr.save_sobject_fields(sobject_name, [f for f in sobj_columns.values()])
+                    self.filemgr.save_sobject_fields(sobject_name, [f for f in sobj_columns.values()])
 
         if len(dropped_fields) > 0:
             if not allow_drop:
+                self.log.warn('  warning: dropped column(s detected for table {}, auto-drop disabled, skipping'.format(sobject_name))
                 # do not allow sync until field(s) allowed to be dropped
                 return False
             fieldmap = self.filemgr.get_sobject_map(sobject_name)
@@ -193,6 +198,7 @@ class SchemaManager:
                 else:
                     newlist.append(item)
             fieldmap = newlist
+            self.log.info(f'  dropped column(s) detected')
             self.driver.alter_table_drop_columns(dropped_fields, sobject_name)
             self.filemgr.save_sobject_map(sobject_name, fieldmap)
             select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap], sobject_name)

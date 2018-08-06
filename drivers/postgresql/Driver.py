@@ -1,4 +1,5 @@
 import json
+import logging
 import subprocess
 import os
 import string
@@ -17,6 +18,7 @@ from db.mdatadb import ConfigEnv
 
 class Driver(DbDriverMeta):
     schema_name = None
+    log = logging.getLogger('dbdriver')
 
     driver_type = "postgresql"
 
@@ -32,7 +34,7 @@ class Driver(DbDriverMeta):
             self.verify_db_setup()
             return True
         except Exception as ex:
-            print(f'>> Error >> Unable to log into {dbenv.dbname} at {dbenv.dbhost}:{dbport} for user {dbenv.dbuser}')
+            self.log.fatal(f'>> Error >> Unable to log into {dbenv.dbname} at {dbenv.dbhost}:{dbport} for user {dbenv.dbuser}')
             return False
 
     def exec_dml(self, dml):
@@ -115,7 +117,7 @@ class Driver(DbDriverMeta):
             if result.startswith('COPY'):
                 return int(result[5:])
         except Exception as ex:
-            print(ex)
+            self.log.fatal(ex)
         return 0
 
     def upsert(self, cur, table_name, trec: dict, journal=None):
@@ -318,7 +320,8 @@ class Driver(DbDriverMeta):
             # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'latitude', 'db_field': prefix+'Latitude', 'fieldtype': 'address'})
             # return newfieldlist
         else:
-            print(field)
+            #print(field)
+            self.log.error(f'field {fieldname} unknown type {fieldtype} for sobject {sobject_name}')
             raise Exception('field {0} unknown type {1} for sobject {2}'.format(fieldname, fieldtype, sobject_name))
 
         newfieldlist = [{'fieldlen': fieldlen, 'dml': sql, 'table_name': sobject_name, 'sobject_field': field['name'],
@@ -336,7 +339,7 @@ class Driver(DbDriverMeta):
                 continue
             col = col_def[0]
             ddl = ddl_template.format(self.fq_table(sobject_name), col['db_field'], col['dml'])
-            print('adding column {} to {}'.format(col['db_field'], sobject_name))
+            print('    adding column {} to {}'.format(col['db_field'], sobject_name))
             cur.execute(ddl)
             newcols.append(col)
 
@@ -352,6 +355,7 @@ class Driver(DbDriverMeta):
         ddl_template = 'ALTER TABLE {} DROP COLUMN {}'
         cur = self.db.cursor()
         for field in drop_field_names:
+            print('    dropping column {} from {}'.format(field, sobject_name))
             ddl = ddl_template.format(self.fq_table(sobject_name), field)
             cur.execute(ddl)
 

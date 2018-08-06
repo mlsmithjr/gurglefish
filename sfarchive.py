@@ -5,7 +5,9 @@ from schema import SchemaManager
 from sfexport import SFExporter
 from sfimport import SFImporter
 import argparse
-
+import logging
+import logging.config
+import yaml
 
 def debug(o):
     s = json.dumps(o, sort_keys=True, indent=4, separators=(',', ': '))
@@ -45,6 +47,12 @@ if __name__ == '__main__':
     parser.add_argument("--disable", help="enable one or more tables to sync", nargs="+")
     args = parser.parse_args()
 
+    logconfig = {}
+    with open('logging.yml', 'r') as configfile:
+        logconfig = yaml.load(configfile.read())
+    logging.config.dictConfig(logconfig)
+    logger = logging.getLogger('simple')
+
     envname = args.env
 
     #    env, dbmgr, sf = tools.setup_env(envname)
@@ -68,14 +76,14 @@ if __name__ == '__main__':
     if args.inspect is not None:
         thelist = schema_mgr.inspect()
         for entry in thelist:
-            print(entry['name'])
+            logger.info(entry['name'])
 
     if args.enable is not None:
         table_config = context.filemgr.get_configured_tables()
         to_enable = [a.lower() for a in args.enable]
         for entry in table_config:
             if entry['name'] in to_enable:
-                print(f"enabling {entry['name']}")
+                logger.info(f"enabling {entry['name']}")
                 entry['enabled'] = True
         context.filemgr.save_configured_tables(table_config)
 
@@ -84,7 +92,7 @@ if __name__ == '__main__':
         to_disable = [a.lower() for a in args.disable]
         for entry in table_config:
             if entry['name'] in to_disable:
-                print(f"disabling {entry['name']}")
+                logger.info(f"disabling {entry['name']}")
                 entry['enabled'] = False
         context.filemgr.save_configured_tables(table_config)
 
@@ -113,9 +121,9 @@ if __name__ == '__main__':
         imp = SFImporter(context, schema_mgr)
         table_list = make_arg_list(args.load)
         for tablename in table_list:
-            print('loading {}'.format(tablename))
+            logger.info('loading {}'.format(tablename))
             count = imp.bulk_load(tablename)
-            print('loaded {} records'.format(count))
+            logger.info('loaded {} records'.format(count))
 
             # if args.updates and len(args.updates) > 0:
             #    exp = SFExporter()
