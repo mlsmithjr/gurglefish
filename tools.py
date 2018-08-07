@@ -4,20 +4,23 @@ import DriverManager
 from context import Context
 from db.mdatadb import MDEngine, ConfigEnv
 from salesforce.sfapi import SFClient
+import logging
+
+_log = logging.getLogger('main')
 
 
 def setup_env(envname) -> Context:
     mde = MDEngine()
     env = mde.get_db_env(envname)
     if env is None:
-        print(f'Configuration for {envname} not found')
+        _log.error(f'Configuration for {envname} not found')
         exit(1)
 
     sf = SFClient()
     try:
         sf.login(env.consumer_key, env.consumer_secret, env.login, env.password, env.authurl)
     except Exception as ex:
-        print(f'>> Error >> Unable to connect to {env.authurl} as {env.login}')
+        _log.error(f'Unable to connect to {env.authurl} as {env.login}')
         return None
 
     dbdriver = DriverManager.Manager().getDriver('postgresql')

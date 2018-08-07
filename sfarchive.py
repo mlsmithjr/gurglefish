@@ -9,10 +9,6 @@ import logging
 import logging.config
 import yaml
 
-def debug(o):
-    s = json.dumps(o, sort_keys=True, indent=4, separators=(',', ': '))
-    print(s)
-
 
 def load_file_items(filename):
     with open(filename, 'r') as f:
@@ -32,24 +28,28 @@ def make_arg_list(args_list):
             processed_args.append(arg)
     return processed_args
 
+def load_log_config():
+    with open('logging.yml', 'r') as configfile:
+        logconfig = yaml.load(configfile.read())
+        return logconfig
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(epilog='@file arguments designate a file containing actual arguments, one per line')
-    parser.add_argument("--env", help="Environment/DB settings name", metavar="env_name", required=True)
-    parser.add_argument("--sync", help="sync table updates", nargs="*", metavar="object|@file")
-    parser.add_argument("--schema", help="load sobject schema and create tables", nargs="*", metavar="object|@file")
-    parser.add_argument("--export", help="export full sobject data", nargs="+", metavar="object|@file")
-    parser.add_argument("--load", help="load/import full table data, table must be empty", nargs="*", metavar="object|@file")
-    parser.add_argument("--inspect", help="inspect objects", nargs="*", metavar="object|@file")
-    parser.add_argument("--init", help="initialize configuration", nargs="*")
-    parser.add_argument("--sample", help="only export a sample of data", nargs="*")
-    parser.add_argument("--enable", help="enable one or more tables to sync", nargs="+")
-    parser.add_argument("--disable", help="enable one or more tables to sync", nargs="+")
+    group = parser.add_mutually_exclusive_group()
+    parser.add_argument("env", help="Environment/DB settings name", metavar="env_name")
+    group.add_argument("--sync", help="sync table updates", nargs="*", metavar="sobject|@file")
+    group.add_argument("--schema", help="load sobject schema and create tables", nargs="*", metavar="sobject|@file")
+    group.add_argument("--export", help="export full sobject data", nargs="+", metavar="sobject|@file")
+    group.add_argument("--load", help="load/import full table data, table must be empty", nargs="*", metavar="sobject|@file")
+    parser.add_argument("--inspect", help="inspect objects", action="store_true")
+    parser.add_argument("--sample", help="sample data (500 rows)", action="store_true")
+    group.add_argument("--init", help="initialize configuration", action="store_true")
+    parser.add_argument("--enable", help="enable one or more tables to sync", nargs="+", metavar="sobject|@file")
+    parser.add_argument("--disable", help="enable one or more tables to sync", nargs="+", metavar="sobject|@file")
     args = parser.parse_args()
 
-    logconfig = {}
-    with open('logging.yml', 'r') as configfile:
-        logconfig = yaml.load(configfile.read())
+    logconfig = load_log_config()
     logging.config.dictConfig(logconfig)
     logger = logging.getLogger('simple')
 
@@ -62,7 +62,8 @@ if __name__ == '__main__':
 
     schema_mgr = SchemaManager(context)
 
-    if args.init is not None:
+    if args.init:
+    #if args.init is not None:
         sobject_list = schema_mgr.inspect()
         sobjectconfig = []
         for sobject in sobject_list:
@@ -73,14 +74,14 @@ if __name__ == '__main__':
         context.filemgr.save_config(configmap)
         print('config.json created')
 
-    if args.inspect is not None:
+    if args.inspect:
         thelist = schema_mgr.inspect()
         for entry in thelist:
             logger.info(entry['name'])
 
     if args.enable is not None:
         table_config = context.filemgr.get_configured_tables()
-        to_enable = [a.lower() for a in args.enable]
+        to_enable = [a.tolower() for a in make_arg_list(args.enable)]
         for entry in table_config:
             if entry['name'] in to_enable:
                 logger.info(f"enabling {entry['name']}")
@@ -89,7 +90,7 @@ if __name__ == '__main__':
 
     if args.disable is not None:
         table_config = context.filemgr.get_configured_tables()
-        to_disable = [a.lower() for a in args.disable]
+        to_disable = [a.tolower() for a in make_arg_list(args.disable)]
         for entry in table_config:
             if entry['name'] in to_disable:
                 logger.info(f"disabling {entry['name']}")
@@ -115,7 +116,7 @@ if __name__ == '__main__':
         exp = SFExporter(context)
         table_list = make_arg_list(args.export)
         for tablename in table_list:
-            exp.export_copy_sql(tablename, schema_mgr, just_sample=args.sample is not None)
+            exp.export_copy_sql(tablename, schema_mgr, just_sample=args.sample)
 
     if args.load and len(args.load) > 0:
         imp = SFImporter(context, schema_mgr)
@@ -124,14 +125,6 @@ if __name__ == '__main__':
             logger.info('loading {}'.format(tablename))
             count = imp.bulk_load(tablename)
             logger.info('loaded {} records'.format(count))
-
-            # if args.updates and len(args.updates) > 0:
-            #    exp = SFExporter()
-            #    for tablename in args.updates:
-            #        stamp = dbmgr.getMaxTimestamp(tablename)
-            #        if not stamp is None:
-            #            print('stamp=' + stamp)
-            #        exp.export_copy(dbmgr, sf, tablename, timestamp=stamp)
 
 
 

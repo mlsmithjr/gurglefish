@@ -59,17 +59,8 @@ class SFClient:
         return sobject_doc
 
     def getSobjectList(self, omit_packages=True):
-        # if CaptureManager.exists(self._bucket, 'sobjectList'):
-        #    stuff = CaptureManager.fetch(self._bucket, 'sobjectList')
-        #    return stuff
         sobjectList = self._invokeGetREST('sobjects/', {})
         sobjectList = sobjectList['sobjects']
-        # if omit_packages:
-        #    sobjectList = [sobj for sobj in sobjectList if not '__' in sobj['name']]
-        # scrub out objects we can't use
-
-        # sobjectList = [sobj for sobj in sobjectList if self.accept_sobject(sobj)]
-        # CaptureManager.save(self._bucket, 'sobjectList', sobjectList)
         return sobjectList
 
     def get_field_list(self, sobject_name) -> List:
@@ -135,12 +126,9 @@ class SFClient:
           }
 
         """
-        # if CaptureManager.exists(self._bucket, sobject_name):
-        #    return CaptureManager.fetch(self._bucket, sobject_name)
         fielddef = self._invokeGetREST('sobjects/%s/describe/' % (sobject_name,), {})
         fieldlist = fielddef['fields']
         fieldlist.sort(key=operator.itemgetter('name'))
-        # CaptureManager.save(self._bucket, sobject_name, fieldlist)
         return fieldlist
 
     def get_field_map(self, sobject_name):
@@ -168,10 +156,10 @@ class SFClient:
     def _invokePostREST(self, objectName, payload):
         if not isinstance(payload, str):
             payload = json.dumps(payload)
-        self.logger.debug('post invoking /services/data/v%s/sobjects/%s' % (_API_VERSION, objectName))
         try:
-            response = self.client.post(
-                '%s/services/data/v%s/sobjects/%s/' % (self.service_url, _API_VERSION, objectName), data=payload)
+            fullurl = f'{self.service_url}/services/data/v{_API_VERSION}/sobjects/{objectName}/'
+            self.logger.debug('post %s', fullurl)
+            response = self.client.post(fullurl, data=payload)
         except Exception as ex:
             self.logger.error(ex)
             self.logger.error(response)
@@ -184,11 +172,10 @@ class SFClient:
         return data
 
     def _invokeGetREST(self, url, url_params):
-        self.logger.debug('get invoking /services/data/v%s/%s' % (_API_VERSION, url))
-        self.logger.debug('service_url=%s', self.service_url)
-        response = self.client.get('%s/services/data/v%s/%s' % (self.service_url, _API_VERSION, url), params=url_params)
+        fullurl = f'{self.service_url}/services/data/v{_API_VERSION}/{url}'
+        self.logger.debug('get %s', fullurl)
+        response = self.client.get(fullurl, params=url_params)
         resultPayload = response.text
-        # self.logger.debug('http response=%s', response.text)
         response.raise_for_status()
         data = json.loads(resultPayload)
         return data
@@ -197,21 +184,24 @@ class SFClient:
         soql = 'select count() from ' + sobject
         if filter:
             soql += ' where ' + filter
-        response = self.client.get('%s/services/data/v%s/query/' % (self.service_url, _API_VERSION), params={'q': soql})
+        fullurl = f'{self.service_url}/services/data/v{_API_VERSION}/query/'
+        self.logger.debug('get %s', fullurl)
+        response = self.client.get(fullurl, params={'q': soql})
         resultPayload = response.json()
         if response.status_code != 200:
-            print((response.status_code, response.reason))
-            print(resultPayload)
+            self.logger.error(f'query error {response.status_code}, {response.reason}')
+            self.logger.error(resultPayload)
             return
         return resultPayload['totalSize']
 
     def query(self, soql):
-        self.logger.debug('invoking /services/data/v%s/query' % (_API_VERSION,))
-        response = self.client.get('%s/services/data/v%s/query/' % (self.service_url, _API_VERSION), params={'q': soql})
+        fullurl = f'{self.service_url}/services/data/v{_API_VERSION}/query/'
+        self.logger.debug('get %s', fullurl)
+        response = self.client.get(fullurl, params={'q': soql})
         resultPayload = response.text
         if response.status_code != 200:
-            print((response.status_code, response.reason))
-            print(resultPayload)
+            self.logger.error(f'query error {response.status_code}, {response.reason}')
+            self.logger.error(resultPayload)
             return
         data = json.loads(resultPayload)
         recs = data['records']

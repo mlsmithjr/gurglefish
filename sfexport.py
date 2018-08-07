@@ -1,5 +1,6 @@
 import gzip
 import json
+import logging
 import operator
 import os
 
@@ -16,6 +17,8 @@ __author__ = 'mark'
 
 
 class SFExporter:
+
+    logger = logging.getLogger('main')
 
     def __init__(self, context: Context):
         self.context = context
@@ -116,6 +119,7 @@ class SFExporter:
         if not timestamp is None:
             soql += ' where LastModifiedDate > {0}'.format(querytools.sfTimestamp(timestamp))
         if just_sample:
+            self.logger.info('sampling 500 records max')
             soql += ' limit 500'
         counter = 0
         totalSize = self.context.sfclient.record_count(sobject_name)

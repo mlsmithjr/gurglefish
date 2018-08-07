@@ -34,7 +34,7 @@ class Driver(DbDriverMeta):
             self.verify_db_setup()
             return True
         except Exception as ex:
-            self.log.fatal(f'>> Error >> Unable to log into {dbenv.dbname} at {dbenv.dbhost}:{dbport} for user {dbenv.dbuser}')
+            self.log.fatal(f'Unable to log into {dbenv.dbname} at {dbenv.dbhost}:{dbport} for user {dbenv.dbuser}')
             return False
 
     def exec_dml(self, dml):
