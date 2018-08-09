@@ -7,6 +7,9 @@ import os
 import sys
 
 import datetime
+
+import arrow
+
 import querytools
 import tools
 from context import Context
@@ -33,23 +36,28 @@ class SFExporter:
         #        tablelist = [table for table in schema_mgr.get_os_tables() if table['exists']]
         #        if filterlist:
         #            tablelist = [table for table in tablelist if table['name'] in filterlist]
-        for table in tablelist:
-            tablename = table['name'].lower()
-            print(f'sync {tablename}')
-            if not self.context.dbdriver.table_exists(tablename):
-                schema_mgr.create_table(tablename)
-            else:
-                # check for column changes and process accordingly
-                proceed = schema_mgr.update_sobject(tablename, allow_add=table['auto_create_columns'],
-                                                    allow_drop=table['auto_drop_columns'])
-                if not proceed:
-                    print('sync of {} skipped due to warnings'.format(tablename))
-                    return
+        jobid = self.context.dbdriver.start_sync_job()
+        try:
+            for table in tablelist:
+                tablename = table['name'].lower()
+                print(f'sync {tablename}')
+                if not self.context.dbdriver.table_exists(tablename):
+                    schema_mgr.create_table(tablename)
+                else:
+                    # check for column changes and process accordingly
+                    proceed = schema_mgr.update_sobject(tablename, allow_add=table['auto_create_columns'],
+                                                        allow_drop=table['auto_drop_columns'])
+                    if not proceed:
+                        print('sync of {} skipped due to warnings'.format(tablename))
+                        return
 
-            tstamp = self.context.dbdriver.getMaxTimestamp(tablename)
-            self.etl(self.context.filemgr.get_sobject_query(tablename), tablename, timestamp=tstamp)
+                tstamp = self.context.dbdriver.getMaxTimestamp(tablename)
+                self.etl(jobid, self.context.filemgr.get_sobject_query(tablename), tablename, timestamp=tstamp)
+        finally:
+            self.context.dbdriver.finish_sync_job(jobid)
+            self.context.dbdriver.clean_house(arrow.datetime.shift(months=-2))
 
-    def etl(self, soql, sobject_name, timestamp=None, path=None):
+    def etl(self, jobid, soql, sobject_name, timestamp=None, path=None):
         if path is None: path = './'
 
         sobject_name = sobject_name.lower()
@@ -90,7 +98,7 @@ class SFExporter:
             dbdriver.commit()
             print('processed {}'.format(counter))
             if counter > 0:
-                dbdriver.insert_sync_stats(sobject_name, sync_start, datetime.datetime.now(), timestamp, inserted,
+                dbdriver.insert_sync_stats(jobid, sobject_name, sync_start, datetime.datetime.now(), timestamp, inserted,
                                            updated)
         except Exception as ex:
             dbdriver.rollback()

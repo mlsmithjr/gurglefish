@@ -210,8 +210,6 @@ class SFClient:
         while 'nextRecordsUrl' in data:
             nextRecordsUrl = data['nextRecordsUrl']
             if nextRecordsUrl:
-                # u = '%s/%s' % (self.service_url, nextRecordsUrl)
-                # print 'NEXTURL=%s' % (u,)
                 response = self.client.get('%s%s' % (self.service_url, nextRecordsUrl))
                 txt = response.text
                 if isinstance(txt, str):

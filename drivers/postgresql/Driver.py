@@ -5,6 +5,7 @@ import os
 import string
 from typing import List
 import datetime
+
 from fastcache import lru_cache
 
 import psycopg2
@@ -24,17 +25,19 @@ class Driver(DbDriverMeta):
 
     def connect(self, dbenv: ConfigEnv):
         self.dbenv = dbenv
-        dbport = dbenv.dbport if not dbenv.dbport is None and len(dbenv.dbport) > 2 else '5432'
+        dbport = dbenv.dbport if dbenv.dbport is not None and len(dbenv.dbport) > 2 else '5432'
         try:
             self.db = psycopg2.connect(
                 "dbname='{0}' user='{1}' password='{2}' host='{3}' port='{4}'".format(dbenv.dbname, dbenv.dbuser,
-                                                                                      dbenv.dbpass, dbenv.dbhost, dbport))
+                                                                                      dbenv.dbpass, dbenv.dbhost,
+                                                                                      dbport))
             self.storagedir = os.path.join(config.storagedir, 'db', self.dbenv.id)
             self.schema_name = dbenv.schema
             self.verify_db_setup()
             return True
         except Exception as ex:
             self.log.fatal(f'Unable to log into {dbenv.dbname} at {dbenv.dbhost}:{dbport} for user {dbenv.dbuser}')
+            self.log.fatal(ex)
             return False
 
     def exec_dml(self, dml):
@@ -66,41 +69,79 @@ class Driver(DbDriverMeta):
     def verify_db_setup(self):
         self.exec_dml(f'CREATE SCHEMA IF NOT EXISTS {self.schema_name}')
         if not self.table_exists('gf_mdata_sync_stats'):
-            ddl = 'create table {}.gf_mdata_sync_stats (' + \
+            ddl = f'create table {self.schema_name}.gf_mdata_sync_stats (' + \
                   '  id         serial primary key, ' + \
+                  '  jobid      integer(8), ' + \
                   '  table_name text not null, ' + \
                   '  inserts    numeric(8) not null, ' + \
                   '  updates    numeric(8) not null, ' + \
                   '  sync_start timestamp not null default now(), ' + \
                   '  sync_end   timestamp not null default now(), ' + \
                   '  sync_since timestamp not null)'
-            ddl = ddl.format(self.schema_name)
             self.exec_dml(ddl)
         if not self.table_exists('gf_mdata_schema_chg'):
-            ddl = 'create table {}.gf_mdata_schema_chg (' + \
+            ddl = f'create table {self.schema_name}.gf_mdata_schema_chg (' + \
                   '  id         serial primary key, ' + \
                   '  table_name text not null, ' + \
                   '  col_name   text not null, ' + \
                   '  operation  text not null, ' + \
                   '  date_added timestamp not null default now())'
-            ddl = ddl.format(self.schema_name)
             self.exec_dml(ddl)
+        if not self.table_exists('gf_mdata_sync_jobs'):
+            ddl = f'create table {self.schema_name}.gf_mdata_sync_jobs (' + \
+                  '  id         serial primary key, ' + \
+                  '  date_start timestamp not null default now(),' + \
+                  '  date_finish timestamp)'
+            self.exec_dml(ddl)
+            self.exec_dml(f'alter table {self.schema_name}.gf_mdata_sync_stats add constraint ' +\
+                          'gf_mdata_sync_stats_job_fk foreign key (jobid) references ' + \
+                          f'{self.schema_name}.gf_mdata_sync_jobs(id) on delete cascade')
 
-    def insert_sync_stats(self, table_name, sync_start, sync_end, sync_since, inserts, updates):
+
+    def start_sync_job(self):
+        cur = self.cursor
+        cur.execute(f'insert into {self.schema_name}.gf_mdata_sync_jobs (date_start) values (%s)', (datetime.now(),))
+        rowid = cur.fetchone()[0]
+        cur.close()
+        return rowid
+
+    def finish_sync_job(self, jobid):
+        cur = self.cursor
+        cur.execute(f'update {self.schema_name}.gf_mdata_sync_jobs set date_finish=%s where id=%s', (datetime.now(), jobid))
+        cur.close()
+
+    def insert_sync_stats(self, jobid, table_name, sync_start, sync_end, sync_since, inserts, updates):
         cur = self.cursor
         if sync_since is None:
-            sync_since = datetime.datetime(1970,1,1,0,0,0)
-        dml = 'insert into {}.gf_mdata_sync_stats (table_name, inserts, updates, sync_start, sync_end, sync_since) ' + \
+            sync_since = datetime.datetime(1970, 1, 1, 0, 0, 0)
+        dml = f'insert into {self.schema_name}.gf_mdata_sync_stats (jobid, table_name, inserts, updates, sync_start, sync_end, sync_since) ' + \
               'values (%s,%s,%s,%s,%s,%s)'
-        cur.execute(dml.format(self.schema_name), [table_name, inserts, updates, sync_start, sync_end, sync_since])
+        cur.execute(dml, (jobid, table_name, inserts, updates, sync_start, sync_end, sync_since))
+        self.db.commit()
+
+    def clean_house(self, date_constraint):
+        cur = self.cursor
+        dml = f'delete from {self.schema_name}.gf_mdata_sync_jobs where date_start < %s'
+        cur.execute(dml, (date_constraint,))
         self.db.commit()
         cur.close()
 
+
+#    def recent_sync_timestamp(self, tablename = None):
+#        cur = self.cursor
+#        if tablename is None:
+#            cur.execute(f'select max(date_start) from {self.schema_name}.gf_mdata_sync_jobs')
+#        else:
+#            cur.execute(f'select max(sync_end) from {self.schema_name}.gf_mdata_sync_stats where table_name=%s', (tablename,))
+#        result = cur.fetchone()
+#        cur.close()
+#        return result
+
     def insert_schema_change(self, table_name: string, col_name: string, operation: string):
         cur = self.cursor
-        dml = 'insert into {}.gf_mdata_schema_chg (table_name, col_name, operation) values (%s,%s,%s)'
-        cur.execute(dml.format(self.schema_name), [table_name, col_name, operation])
-        self.db_commit()
+        dml = f'insert into {self.schema_name}.gf_mdata_schema_chg (table_name, col_name, operation) values (%s,%s,%s)'
+        cur.execute(dml, [table_name, col_name, operation])
+        self.db.commit()
         cur.close()
 
     def bulk_load(self, tablename):
@@ -127,7 +168,7 @@ class Driver(DbDriverMeta):
         tmp_rec = cur.fetchone()
         orig_rec = {}
         index = 0
-        if not tmp_rec is None:
+        if tmp_rec is not None:
             for col in cur.description:
                 orig_rec[col[0]] = tmp_rec[index]
                 index += 1
@@ -147,7 +188,7 @@ class Driver(DbDriverMeta):
                     namelist.append(k)
                     data.append(v)
 
-            valueplaceholders = ','.join('%s' for i in range(len(data)))
+            valueplaceholders = ','.join('%s' for _ in range(len(data)))
             fieldnames = ','.join(namelist)
             sql = 'insert into {0} ({1}) values ({2});'.format(self.fq_table(table_name), fieldnames, valueplaceholders)
             if journal:
@@ -178,8 +219,7 @@ class Driver(DbDriverMeta):
                 # actually changed.
                 return (False, False)
 
-            assert(not pkey is None)
-            sql = 'update {} set '.format(self.fq_table(table_name))
+            assert (not pkey is None)
             sql = 'update {} set '.format(self.fq_table(table_name))
             sets = []
             for name in namelist:
@@ -208,17 +248,16 @@ class Driver(DbDriverMeta):
         cur.execute(sql.format(table_name))
         columns = cur.fetchall()
         cur.close()
-        self.last_table_name = table_name
-        self.last_table_fields = dict()
+        table_fields = dict()
         for c in columns:
-            self.last_table_fields[c['column_name']] = {'column_name': c['column_name'], 'data_type': c['data_type'],
-                                                        'character_maximum_length': c['character_maximum_length'],
-                                                        'ordinal_position': c['ordinal_position']}
-        return self.last_table_fields
+            table_fields[c['column_name']] = {'column_name': c['column_name'], 'data_type': c['data_type'],
+                                              'character_maximum_length': c['character_maximum_length'],
+                                              'ordinal_position': c['ordinal_position']}
+        return table_fields
 
     def record_count(self, table_name):
         table_cursor = self.db.cursor()
-        table_cursor.execute('SELECT count(*) FROM {}.{}'.format(self.schema_name,table_name))
+        table_cursor.execute('SELECT count(*) FROM {}.{}'.format(self.schema_name, table_name))
         records = table_cursor.fetchone()
         table_cursor.close()
         return records
@@ -245,8 +284,8 @@ class Driver(DbDriverMeta):
     def get_db_columns(self, table_name):
         col_cursor = self.new_map_cursor
         col_cursor.execute(
-            "select * from information_schema.columns where table_name=%s " + \
-            "and table_schema=%s" + \
+            "select * from information_schema.columns where table_name=%s " +
+            "and table_schema=%s " +
             "order by column_name", (table_name, self.schema_name))
         cols = col_cursor.fetchall()
         col_cursor.close()
@@ -259,8 +298,8 @@ class Driver(DbDriverMeta):
                     fieldlen, dml, table_name, sobject_name, sobject_field, db_field, fieldtype
                 ))
         """
-        assert (not sobject_name is None)
-        assert (not field is None)
+        assert (sobject_name is not None)
+        assert (field is not None)
         #        if field is None: return None,None
 
         sql = ''
@@ -300,10 +339,10 @@ class Driver(DbDriverMeta):
         elif fieldtype == 'percent':
             sql += 'numeric '
             fieldlen = 9
-        elif fieldtype in ('base64', 'anyType'):  ##### not implemented yet <<<<<<
-            return None
+        elif fieldtype in ('base64', 'anyType'):  # not implemented yet <<<<<<
+            return []
         elif fieldtype == 'address':
-            return None
+            return []
             #
             # this is a weird exception.  Handle differently
             #
@@ -320,7 +359,6 @@ class Driver(DbDriverMeta):
             # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'latitude', 'db_field': prefix+'Latitude', 'fieldtype': 'address'})
             # return newfieldlist
         else:
-            #print(field)
             self.log.error(f'field {fieldname} unknown type {fieldtype} for sobject {sobject_name}')
             raise Exception('field {0} unknown type {1} for sobject {2}'.format(fieldname, fieldtype, sobject_name))
 
@@ -329,7 +367,7 @@ class Driver(DbDriverMeta):
         return newfieldlist
 
     def alter_table_add_columns(self, new_field_defs, sobject_name):
-        ddl_template = 'ALTER TABLE {} ADD COLUMN {} {}'
+        ddl_template = "ALTER TABLE {} ADD COLUMN {} {}"
         cur = self.db.cursor()
         newcols = []
         for field in new_field_defs:
@@ -344,8 +382,8 @@ class Driver(DbDriverMeta):
             newcols.append(col)
 
             # record change to schema
-            sql = 'insert into {}.gf_mdata_schema_chg (table_name, col_name, operation) values (%s,%s,%s)'
-            cur.execute(sql.format(self.schema_name), [sobject_name, col['db_field'], 'create'])
+            sql = f'insert into {self.schema_name}.gf_mdata_schema_chg (table_name, col_name, operation) values (%s,%s,%s)'
+            cur.execute(sql, [sobject_name, col['db_field'], 'create'])
 
         self.db.commit()
         cur.close()
@@ -367,7 +405,7 @@ class Driver(DbDriverMeta):
         cur.close()
 
     def maintain_indexes(self, sobject_name, field_defs):
-        ddl_template = 'CREATE INDEX IF NOT EXISTS {}_{} ON {} ({})'
+        ddl_template = "CREATE INDEX IF NOT EXISTS {}_{} ON {} ({})"
         cur = self.db.cursor()
         for field in field_defs:
             if field['externalId'] or field['idLookup']:
@@ -409,8 +447,8 @@ class Driver(DbDriverMeta):
         parser = 'from transformutils import id, bl, db, dt, st, ts, inte\n\n'
         parser += 'def parse(rec):\n' + \
                   '  result = dict()\n\n'
-#                  '  def push(name, value):\n' + \
-#                  '    result[name] = value\n\n'
+        #                  '  def push(name, value):\n' + \
+        #                  '    result[name] = value\n\n'
 
         for fieldmap in fieldlist:
             fieldtype = fieldmap['fieldtype']
@@ -419,7 +457,7 @@ class Driver(DbDriverMeta):
             dbfield = fieldmap['db_field']
             p_parser = ''
             if fieldtype in (
-            'picklist', 'multipicklist', 'string', 'textarea', 'email', 'phone', 'url', 'encryptedstring'):
+                    'picklist', 'multipicklist', 'string', 'textarea', 'email', 'phone', 'url', 'encryptedstring'):
                 p_parser = 'result["{}"] = st(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'combobox':
                 p_parser = 'result["{}"] = st(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
@@ -443,11 +481,11 @@ class Driver(DbDriverMeta):
                 p_parser = 'result["{}"] = inte(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
             elif fieldtype == 'percent':
                 p_parser = 'result["{}"] = db(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
-            elif fieldtype in ('base64', 'anyType'):  ##### not implemented yet <<<<<<
+            elif fieldtype in ('base64', 'anyType'):  # not implemented yet <<<<<<
                 return None
             elif fieldtype == 'address':
                 p_parser = 'result["{}"] = stsub(rec, "{}", "{}", fieldlen={})\n'.format(dbfield, fieldname,
-                                                                                   fieldmap['subfield'], fieldlen)
+                                                                                         fieldmap['subfield'], fieldlen)
 
             parser += '  ' + p_parser
         parser += '  return result'

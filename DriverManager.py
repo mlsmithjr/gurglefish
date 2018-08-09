@@ -82,6 +82,25 @@ class DbDriverMeta(object):
     def bulk_load(self, tablename):
         pass
 
+    @abstractmethod
+    def start_sync_job(self):
+        pass
+
+    @abstractmethod
+    def finish_sync_job(self, jobid):
+        pass
+
+    @abstractmethod
+    def insert_sync_stats(self, jobid, table_name, sync_start, sync_end, sync_since, inserts, updates):
+        pass
+
+#    @abstractmethod
+#    def recent_sync_timestamp(self, tablename = None):
+#        pass
+
+    @abstractmethod
+    def clean_house(self, date_constraint):
+        pass
 
 class Manager(object):
 
