@@ -49,7 +49,7 @@ class SFClient:
         self.client = requests.Session()
         self.client.headers.update({'Authorization': 'OAuth ' + token,
                                     'Content-Type': 'application/json; charset=UTF-8',
-                                    'Accept-Encoding': 'gzip', 'Accept-Charset': 'utf-8'})
+                                    'Accept-Encoding': 'gzip, compress, deflate', 'Accept-Charset': 'utf-8'})
 
     def close(self):
         pass

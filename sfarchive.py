@@ -34,6 +34,8 @@ def load_log_config():
         return logconfig
 
 
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(epilog='@file arguments designate a file containing actual arguments, one per line')
     group = parser.add_mutually_exclusive_group()
@@ -62,8 +64,12 @@ if __name__ == '__main__':
 
     schema_mgr = SchemaManager(context)
 
+
     if args.init:
     #if args.init is not None:
+        if context.filemgr.get_config() is not None:
+            print('Initialization halted, config.json already exists. Please remove manually to start over')
+            exit(1)
         sobject_list = schema_mgr.inspect()
         sobjectconfig = []
         for sobject in sobject_list:
@@ -81,10 +87,10 @@ if __name__ == '__main__':
 
     if args.enable is not None:
         table_config = context.filemgr.get_configured_tables()
-        to_enable = [a.tolower() for a in make_arg_list(args.enable)]
+        to_enable = [a.lower() for a in make_arg_list(args.enable)]
         for entry in table_config:
             if entry['name'] in to_enable:
-                logger.info(f"enabling {entry['name']}")
+                print(f"enabling {entry['name']}")
                 entry['enabled'] = True
         context.filemgr.save_configured_tables(table_config)
 
@@ -93,7 +99,7 @@ if __name__ == '__main__':
         to_disable = [a.tolower() for a in make_arg_list(args.disable)]
         for entry in table_config:
             if entry['name'] in to_disable:
-                logger.info(f"disabling {entry['name']}")
+                print(f"disabling {entry['name']}")
                 entry['enabled'] = False
         context.filemgr.save_configured_tables(table_config)
 

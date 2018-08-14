@@ -71,7 +71,7 @@ class Driver(DbDriverMeta):
         if not self.table_exists('gf_mdata_sync_stats'):
             ddl = f'create table {self.schema_name}.gf_mdata_sync_stats (' + \
                   '  id         serial primary key, ' + \
-                  '  jobid      integer(8), ' + \
+                  '  jobid      integer, ' + \
                   '  table_name text not null, ' + \
                   '  inserts    numeric(8) not null, ' + \
                   '  updates    numeric(8) not null, ' + \

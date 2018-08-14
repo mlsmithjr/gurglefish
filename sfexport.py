@@ -107,6 +107,44 @@ class SFExporter:
             cur.close()
             journal.close()
 
+    def export_json(self, sobject_name, schema_mgr: SchemaManager, just_sample=False, timestamp=None, path=None):
+        if path is None: path = './'
+
+        sobject_name = sobject_name.lower()
+        if not self.context.dbdriver.table_exists(sobject_name):
+            schema_mgr.create_table(sobject_name)
+
+        fieldlist = self.context.filemgr.get_sobject_map(sobject_name)
+        fieldmap = dict((f['db_field'].lower(), f) for f in fieldlist)
+
+        tablefields = self.context.dbdriver.get_table_fields(sobject_name)
+        tablefields = sorted(tablefields.values(), key=operator.itemgetter('ordinal_position'))
+        soqlfields = [fm['sobject_field'] for fm in fieldmap.values()]
+
+        soql = 'select {} from {}'.format(','.join(soqlfields), sobject_name)
+        if not timestamp is None:
+            soql += ' where LastModifiedDate > {0}'.format(querytools.sfTimestamp(timestamp))
+        if just_sample:
+            self.logger.info('sampling 500 records max')
+            soql += ' limit 500'
+        counter = 0
+        totalSize = self.context.sfclient.record_count(sobject_name)
+        if sys.stdout.isatty():
+            print('{}: exporting {} records: 0%'.format(sobject_name, totalSize), end='\r', flush=True)
+        else:
+            print(f'{sobject_name}: exporting {totalSize} records')
+        with gzip.open(os.path.join(self.storagedir, sobject_name + '.json.gz'), 'wb', compresslevel=5) as export:
+            for rec in self.context.sfclient.query(soql):
+                export.write(json.dumps(rec, indent=4).encode('utf-8'))
+                counter += 1
+                if counter % 2000 == 0 and sys.stdout.isatty():
+                    print('{}: exporting {} records: {:.0f}%\r'.format(sobject_name, totalSize,
+                                                                       (counter / totalSize) * 100), end='\r',
+                          flush=True)
+            export.close()
+            if sys.stdout.isatty():
+                print("\nexported {} records{}".format(counter, ' ' * 10))
+
     def export_copy_sql(self, sobject_name, schema_mgr: SchemaManager, just_sample=False, timestamp=None, path=None):
         if path is None: path = './'
 

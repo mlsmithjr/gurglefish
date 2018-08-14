@@ -59,8 +59,11 @@ class FileManager(object):
             return None
 
     def get_configured_tables(self):
-        with open(os.path.join(self.basedir, 'db', self.envname, 'config.json'), 'r') as configfile:
-            return json.load(configfile)['configuration']['sobjects']
+        try:
+            with open(os.path.join(self.basedir, 'db', self.envname, 'config.json'), 'r') as configfile:
+                return json.load(configfile)['configuration']['sobjects']
+        except Exception as ex:
+            return None
 
     def save_configured_tables(self, new_config):
         config = None
@@ -71,8 +74,11 @@ class FileManager(object):
             json.dump(config, configfile, indent=2)
 
     def get_config(self):
+        try:
             with open(os.path.join(self.basedir, 'db', self.envname, 'config.json'), 'r') as configfile:
                 return json.load(configfile)
+        except Exception as ex:
+            return None
 
     def save_config(self, configmap):
         with open(os.path.join(self.basedir, 'db', self.envname, 'config.json'), 'w') as configfile:
