@@ -65,8 +65,8 @@ class SFExporter:
 
         xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
         if not timestamp is None:
-            soql += " where LastModifiedDate > {}".format(querytools.sfTimestamp(timestamp))
-            soql += " order by LastModifiedDate ASC"
+            soql += " where SystemModStamp > {}".format(querytools.sfTimestamp(timestamp))
+            soql += " order by SystemModStamp ASC"
         cur = dbdriver.cursor
         counter = 0
         journal = self.context.filemgr.create_journal(sobject_name)
@@ -123,7 +123,7 @@ class SFExporter:
 
         soql = 'select {} from {}'.format(','.join(soqlfields), sobject_name)
         if not timestamp is None:
-            soql += ' where LastModifiedDate > {0}'.format(querytools.sfTimestamp(timestamp))
+            soql += ' where SystemModStamp > {0}'.format(querytools.sfTimestamp(timestamp))
         if just_sample:
             self.logger.info('sampling 500 records max')
             soql += ' limit 500'
@@ -163,7 +163,7 @@ class SFExporter:
 
         soql = 'select {} from {}'.format(','.join(soqlfields), sobject_name)
         if not timestamp is None:
-            soql += ' where LastModifiedDate > {0}'.format(querytools.sfTimestamp(timestamp))
+            soql += ' where SystemModStamp > {0}'.format(querytools.sfTimestamp(timestamp))
         if just_sample:
             self.logger.info('sampling 500 records max')
             soql += ' limit 500'
