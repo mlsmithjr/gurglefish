@@ -1,5 +1,9 @@
+import json
+
+import DriverManager
 import tools
-from db.mdatadb import MDEngine
+from db.mdatadb import MDEngine, ConfigEnv
+from salesforce.sfapi import SFClient
 
 MAX_ALLOWED_SEED_RECORDS = 50000
 
@@ -9,12 +13,28 @@ def envlist():
     thelist = mde.fetch_dblist()
     payload = []
     for sfe in thelist:
-        item = dict()
-        item['authurl'] = sfe.authurl
-        item['login'] = sfe.login
-        item['dbname'] = sfe.dbname
-        payload.append(item)
+        payload.append(sfe.to_dict())
     return payload
+
+
+def verifydb(config):
+    cenv = ConfigEnv.from_dict(config)
+    try:
+        dbdriver = DriverManager.Manager().getDriver('postgresql')
+        dbdriver.connect(cenv)
+    except Exception as ex:
+        return {'verified': False, 'message': str(ex)}
+    return {'verified': True, 'message': ''}
+
+
+def verify_salesforce(config):
+    env = ConfigEnv.from_dict(config)
+    try:
+        sf = SFClient()
+        sf.login(env.consumer_key, env.consumer_secret, env.login, env.password, env.authurl)
+    except Exception as ex:
+        return {'verified': False, 'message': 'str(ex)'}
+    return {'verified': True, 'message': ''}
 
 
 def sobjects(envname):

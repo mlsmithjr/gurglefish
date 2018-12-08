@@ -11,6 +11,13 @@ class ConfigEnv(object):
     def __init__(self, d, dbpath=None):
         self.fields = d
 
+    def to_dict(self):
+        return dict([(k,v) for k,v in self.fields.items()])
+
+    @classmethod
+    def from_dict(cls, d):
+        return ConfigEnv(d)
+
     @property
     def id(self):
         return self.fields['id']
@@ -122,16 +129,12 @@ class ConfigEnv(object):
 class MDEngine(object):
     def __init__(self, dbpath=None):
         if dbpath is None:
-#            dbpath = os.path.join(storagedir, 'mdata.json')
             dbpath = os.path.join(storagedir, 'connections.ini')
         self.dbpath = dbpath
         if os.path.exists(dbpath):
             config = configparser.ConfigParser()
             config.read(self.dbpath)
             self.data = [ConfigEnv(config[section]) for section in config.sections()]
-#            with open(dbpath, 'r') as f:
-#                self.data = json.loads(f.read())['metadata']
-#                self.data = [ConfigEnv(item) for item in self.data]
         else:
             self.data = []
 

@@ -38,7 +38,7 @@ class Driver(DbDriverMeta):
         except Exception as ex:
             self.log.fatal(f'Unable to log into {dbenv.dbname} at {dbenv.dbhost}:{dbport} for user {dbenv.dbuser}')
             self.log.fatal(ex)
-            return False
+            raise ex
 
     def exec_dml(self, dml):
         cur = self.db.cursor()
