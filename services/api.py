@@ -14,6 +14,14 @@ def envlist():
     payload = []
     for sfe in thelist:
         payload.append(sfe.to_dict())
+        # item = dict()
+        # item['authurl'] = sfe.authurl
+        # item['id'] = sfe.id
+        # item['login'] = sfe.login
+        # item['dbname'] = sfe.dbname
+        # item['schema'] = sfe.schema
+        # payload.append(item)
+        payload.append(sfe.to_json())
     return payload
 
 

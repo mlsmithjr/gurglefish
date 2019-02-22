@@ -18,6 +18,9 @@ class ConfigEnv(object):
     def from_dict(cls, d):
         return ConfigEnv(d)
 
+    def to_json(self):
+        return dict([(k,v) for k,v in self.fields.items()])
+
     @property
     def id(self):
         return self.fields['id']

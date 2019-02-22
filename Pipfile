@@ -4,14 +4,8 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-flask-cors = "*"
 flask-socketio = "*"
 requests = "*"
-flask = "*"
-gevent = "*"
-gevent-websocket = "*"
-fastcache = "*"
-postgres = "*"
 
 [dev-packages]
 
