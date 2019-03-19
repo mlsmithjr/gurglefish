@@ -1,10 +1,11 @@
 import logging
 import os
+from typing import Dict
 
 from context import Context
+from objects.files import LocalTableConfig
 
 __author__ = 'mark'
-
 
 
 class SchemaManager:
@@ -26,6 +27,7 @@ class SchemaManager:
         self.filemgr = context.filemgr
         self.storagedir = self.filemgr.schemadir
         self.filters = context.filemgr.get_global_filters() + context.filemgr.get_filters()
+        self.context = context
 
     def inspect(self):
         solist = self.sfclient.getSobjectList()
@@ -43,9 +45,9 @@ class SchemaManager:
         return solist
 
     def prepare_configured_sobjects(self):
-        table_config = self.context.filemgr.get_configured_tables()
-        tablelist = [table['name'] for table in table_config if table['enabled']]
-        return self.prepare_sobjects(tablelist)
+        table_config: [LocalTableConfig] = self.context.filemgr.get_configured_tables()
+        table_list = [table.name for table in table_config if table.enabled]
+        return self.prepare_sobjects(table_list)
 
     def prepare_sobjects(self, names):
         docs = []
@@ -59,7 +61,7 @@ class SchemaManager:
                 raise ex
         return self._process_sobjects(docs)
 
-    def accept_sobject(self, sobj:dict) -> bool:
+    def accept_sobject(self, sobj: Dict) -> bool:
         """
         determine if the named sobject is suitable for exporting
 
@@ -82,7 +84,7 @@ class SchemaManager:
         if name.endswith('__Tag') or name.endswith('__History') or name.endswith('__Feed'): return False
 #        if name.find('__') != name.find('__c'):
 #            return False
-        if name[0:4] == 'Apex' or name in ('scontrol','weblink','profile'):
+        if name[0:4] == 'Apex' or name in ('scontrol', 'weblink', 'profile'):
             return False
         return True
 

@@ -1,4 +1,5 @@
 import datetime
+from typing import Optional
 
 import DriverManager
 from context import Context
@@ -9,7 +10,7 @@ import logging
 _log = logging.getLogger('main')
 
 
-def setup_env(envname) -> Context:
+def setup_env(envname) -> Optional[Context]:
     mde = MDEngine()
     env = mde.get_db_env(envname)
     if env is None:
@@ -20,7 +21,7 @@ def setup_env(envname) -> Context:
     try:
         sf.login(env.consumer_key, env.consumer_secret, env.login, env.password, env.authurl)
     except Exception as ex:
-        _log.error(f'Unable to connect to {env.authurl} as {env.login}')
+        _log.error(f'Unable to connect to {env.authurl} as {env.login}: {str(ex)}')
         return None
 
     dbdriver = DriverManager.Manager().getDriver('postgresql')

@@ -7,6 +7,7 @@ from typing import List
 from db.mdatadb import ConfigEnv
 from salesforce.sfapi import SFClient
 
+
 class GetDbTablesResult(object):
 
     def __init__(self, name):
@@ -19,8 +20,6 @@ class GetDbTablesResult(object):
     @tablename.setter
     def tablename(self, name):
         self.name = name
-
-
 
 
 class DbDriverMeta(object):
@@ -102,14 +101,15 @@ class DbDriverMeta(object):
     def clean_house(self, date_constraint):
         pass
 
+
 class Manager(object):
 
     def __init__(self):
         self._res = {}
         modules = pkgutil.iter_modules(path=['drivers'])
         for finder, mod_name, ispkg in modules:
-            l = finder.find_module(mod_name)
-            mod = l.load_module(mod_name)
+            toload = finder.find_module(mod_name)
+            mod = toload.load_module(mod_name)
             cls = getattr(mod, 'Driver')
             self._res[mod_name] = cls
 

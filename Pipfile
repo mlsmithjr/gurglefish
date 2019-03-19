@@ -6,6 +6,10 @@ name = "pypi"
 [packages]
 flask-socketio = "*"
 requests = "*"
+pyyaml = "*"
+arrow = "*"
+fastcache = "*"
+psycopg2 = "*"
 
 [dev-packages]
 

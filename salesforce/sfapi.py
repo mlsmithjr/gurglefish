@@ -39,7 +39,8 @@ class SFClient:
         rsp = requests.post(server_url + '/services/oauth2/token', data=payload,
                             headers={'content-type': 'application/x-www-form-urlencoded'})
         payload = json.loads(rsp.text)
-        if 'error' in payload: raise Exception(payload['error_description'])
+        if 'error' in payload:
+            raise Exception(payload['error_description'])
         self.logger.debug('payload=%s' % (rsp.text,))
         self.construct(payload['access_token'], payload['instance_url'])
 

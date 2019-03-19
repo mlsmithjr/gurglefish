@@ -100,14 +100,14 @@ class Driver(DbDriverMeta):
 
     def start_sync_job(self):
         cur = self.cursor
-        cur.execute(f'insert into {self.schema_name}.gf_mdata_sync_jobs (date_start) values (%s)', (datetime.now(),))
+        cur.execute(f'insert into {self.schema_name}.gf_mdata_sync_jobs (date_start) values (%s) returning id', (datetime.datetime.now(),))
         rowid = cur.fetchone()[0]
         cur.close()
         return rowid
 
     def finish_sync_job(self, jobid):
         cur = self.cursor
-        cur.execute(f'update {self.schema_name}.gf_mdata_sync_jobs set date_finish=%s where id=%s', (datetime.now(), jobid))
+        cur.execute(f'update {self.schema_name}.gf_mdata_sync_jobs set date_finish=%s where id=%s', (datetime.datetime.now(), jobid))
         cur.close()
 
     def insert_sync_stats(self, jobid, table_name, sync_start, sync_end, sync_since, inserts, updates):
@@ -115,11 +115,11 @@ class Driver(DbDriverMeta):
         if sync_since is None:
             sync_since = datetime.datetime(1970, 1, 1, 0, 0, 0)
         dml = f'insert into {self.schema_name}.gf_mdata_sync_stats (jobid, table_name, inserts, updates, sync_start, sync_end, sync_since) ' + \
-              'values (%s,%s,%s,%s,%s,%s)'
+              'values (%s,%s,%s,%s,%s,%s,%s)'
         cur.execute(dml, (jobid, table_name, inserts, updates, sync_start, sync_end, sync_since))
         self.db.commit()
 
-    def clean_house(self, date_constraint):
+    def clean_house(self, date_constraint: datetime):
         cur = self.cursor
         dml = f'delete from {self.schema_name}.gf_mdata_sync_jobs where date_start < %s'
         cur.execute(dml, (date_constraint,))

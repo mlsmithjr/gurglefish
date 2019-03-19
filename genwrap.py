@@ -1,15 +1,15 @@
 import argparse
-import json
+import yaml
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--json", help="json file to use as pattern", metavar="json_filename", required=True)
+    parser.add_argument("--yaml", help="yaml file to use as pattern", metavar="yaml_filename", required=True)
     args = parser.parse_args()
 
     if args.json:
-        with open(args.json, 'r') as jsonfile:
-            adict = json.load(jsonfile)
+        with open(args.yaml, 'r') as pfile:
+            adict = yaml.load(pfile)
             print(  'class DictWrapper(object):\n' +\
                     '    bucket = dict()\n')
 

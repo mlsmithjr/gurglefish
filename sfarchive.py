@@ -1,13 +1,13 @@
-import json
 
 import tools
 from schema import SchemaManager
 from sfexport import SFExporter
 from sfimport import SFImporter
 import argparse
-import logging
 import logging.config
 import yaml
+
+from objects.files import LocalTableConfig
 
 
 def load_file_items(filename):
@@ -28,12 +28,11 @@ def make_arg_list(args_list):
             processed_args.append(arg)
     return processed_args
 
+
 def load_log_config():
     with open('logging.yml', 'r') as configfile:
-        logconfig = yaml.load(configfile.read())
+        logconfig = yaml.load(configfile.read(), Loader=yaml.FullLoader)
         return logconfig
-
-
 
 
 if __name__ == '__main__':
@@ -46,7 +45,7 @@ if __name__ == '__main__':
     group.add_argument("--load", help="load/import full table data, table must be empty", nargs="*", metavar="sobject|@file")
     parser.add_argument("--inspect", help="inspect objects", action="store_true")
     parser.add_argument("--sample", help="sample data (500 rows)", action="store_true")
-    group.add_argument("--init", help="initialize configuration", action="store_true")
+    group.add_argument("--init", help="initialize configuration for given environment", action="store_true")
     parser.add_argument("--enable", help="enable one or more tables to sync", nargs="+", metavar="sobject|@file")
     parser.add_argument("--disable", help="enable one or more tables to sync", nargs="+", metavar="sobject|@file")
     args = parser.parse_args()
@@ -57,28 +56,22 @@ if __name__ == '__main__':
 
     envname = args.env
 
-    #    env, dbmgr, sf = tools.setup_env(envname)
     context = tools.setup_env(envname)
     if context is None:
         exit(1)
 
     schema_mgr = SchemaManager(context)
 
-
     if args.init:
-    #if args.init is not None:
-        if context.filemgr.get_config() is not None:
-            print('Initialization halted, config.json already exists. Please remove manually to start over')
+        if context.filemgr.get_configured_tables() is not None:
+            print('Initialization halted, config.yml already exists. Please remove manually to start over')
             exit(1)
         sobject_list = schema_mgr.inspect()
         sobjectconfig = []
         for sobject in sobject_list:
-            name = sobject['name'].lower()
-            node = { 'name': name, 'enabled':False, 'auto_drop_columns': True, 'auto_create_columns': True, 'sync_schedule': 'auto', 'pkgname': sobject['package'] }
-            sobjectconfig.append(node)
-        configmap = {'configuration': { 'sobjects': sobjectconfig }}
-        context.filemgr.save_config(configmap)
-        print('config.json created')
+            sobjectconfig.append(LocalTableConfig({'name': sobject['name'].lower(), 'enabled': False}))
+        context.filemgr.save_configured_tables(sobjectconfig)
+        print('config created')
 
     if args.inspect:
         thelist = schema_mgr.inspect()
@@ -86,21 +79,21 @@ if __name__ == '__main__':
             logger.info(entry['name'])
 
     if args.enable is not None:
-        table_config = context.filemgr.get_configured_tables()
+        table_config: [LocalTableConfig] = context.filemgr.get_configured_tables()
         to_enable = [a.lower() for a in make_arg_list(args.enable)]
         for entry in table_config:
-            if entry['name'] in to_enable:
-                print(f"enabling {entry['name']}")
-                entry['enabled'] = True
+            if entry.name in to_enable:
+                print(f"enabling {entry.name}")
+                entry.enabled = True
         context.filemgr.save_configured_tables(table_config)
 
     if args.disable is not None:
-        table_config = context.filemgr.get_configured_tables()
+        table_config: [LocalTableConfig] = context.filemgr.get_configured_tables()
         to_disable = [a.tolower() for a in make_arg_list(args.disable)]
         for entry in table_config:
-            if entry['name'] in to_disable:
-                print(f"disabling {entry['name']}")
-                entry['enabled'] = False
+            if entry.name in to_disable:
+                print(f"disabling {entry.name}")
+                entry.enabled = False
         context.filemgr.save_configured_tables(table_config)
 
     if args.sync is not None:

@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 
 __author__ = 'mark'
 
@@ -8,11 +9,11 @@ from config import storagedir
 
 
 class ConfigEnv(object):
-    def __init__(self, d, dbpath=None):
+    def __init__(self, d):
         self.fields = d
 
     def to_dict(self):
-        return dict([(k,v) for k,v in self.fields.items()])
+        return dict([(k, v) for k, v in self.fields.items()])
 
     @classmethod
     def from_dict(cls, d):
@@ -150,12 +151,7 @@ class MDEngine(object):
     def fetch_dblist(self):
         return self.data
 
-    def save(self, sfe: ConfigEnv):
-        self.data.append(sfe)
-        with open(self.dbpath, 'w') as f:
-            f.write(json.dumps({ 'metadata' : self.data }))
-
-    def get_db_env(self, envname) -> ConfigEnv:
+    def get_db_env(self, envname) -> Optional[ConfigEnv]:
         for e in self.data:
             if e.id == envname:
                 return e

@@ -3,9 +3,7 @@ import json
 import logging
 import operator
 import os
-
 import sys
-
 import datetime
 
 import arrow
@@ -14,9 +12,9 @@ import querytools
 import tools
 from context import Context
 from schema import SchemaManager
+from objects.files import LocalTableConfig
 
 __author__ = 'mark'
-
 
 
 class SFExporter:
@@ -28,25 +26,20 @@ class SFExporter:
         self.storagedir = context.filemgr.exportdir
         os.makedirs(self.storagedir, exist_ok=True)
 
-    def sync_tables(self, schema_mgr: SchemaManager, filterlist=None):
-        table_config = self.context.filemgr.get_configured_tables()
-        tablelist = [table for table in table_config if table['enabled']]
-        #        if filterlist:
-        #            filterlist = [name.lower() for name in filterlist]
-        #        tablelist = [table for table in schema_mgr.get_os_tables() if table['exists']]
-        #        if filterlist:
-        #            tablelist = [table for table in tablelist if table['name'] in filterlist]
+    def sync_tables(self, schema_mgr: SchemaManager):
+        table_config: [LocalTableConfig] = self.context.filemgr.get_configured_tables()
+        tablelist: [LocalTableConfig] = [table for table in table_config if table.enabled]
         jobid = self.context.dbdriver.start_sync_job()
         try:
             for table in tablelist:
-                tablename = table['name'].lower()
+                tablename = table.name.lower()
                 print(f'sync {tablename}')
                 if not self.context.dbdriver.table_exists(tablename):
                     schema_mgr.create_table(tablename)
                 else:
                     # check for column changes and process accordingly
-                    proceed = schema_mgr.update_sobject(tablename, allow_add=table['auto_create_columns'],
-                                                        allow_drop=table['auto_drop_columns'])
+                    proceed = schema_mgr.update_sobject(tablename, allow_add=table.auto_create_columns,
+                                                        allow_drop=table.auto_drop_columns)
                     if not proceed:
                         print('sync of {} skipped due to warnings'.format(tablename))
                         return
@@ -55,7 +48,7 @@ class SFExporter:
                 self.etl(jobid, self.context.filemgr.get_sobject_query(tablename), tablename, timestamp=tstamp)
         finally:
             self.context.dbdriver.finish_sync_job(jobid)
-            self.context.dbdriver.clean_house(arrow.datetime.shift(months=-2))
+            self.context.dbdriver.clean_house(arrow.now().shift(months=-2).datetime)
 
     def etl(self, jobid, soql, sobject_name, timestamp=None, path=None):
         if path is None: path = './'
@@ -108,7 +101,8 @@ class SFExporter:
             journal.close()
 
     def export_json(self, sobject_name, schema_mgr: SchemaManager, just_sample=False, timestamp=None, path=None):
-        if path is None: path = './'
+        if path is None:
+            path = './'
 
         sobject_name = sobject_name.lower()
         if not self.context.dbdriver.table_exists(sobject_name):
@@ -117,8 +111,6 @@ class SFExporter:
         fieldlist = self.context.filemgr.get_sobject_map(sobject_name)
         fieldmap = dict((f['db_field'].lower(), f) for f in fieldlist)
 
-        tablefields = self.context.dbdriver.get_table_fields(sobject_name)
-        tablefields = sorted(tablefields.values(), key=operator.itemgetter('ordinal_position'))
         soqlfields = [fm['sobject_field'] for fm in fieldmap.values()]
 
         soql = 'select {} from {}'.format(','.join(soqlfields), sobject_name)
@@ -146,7 +138,8 @@ class SFExporter:
                 print("\nexported {} records{}".format(counter, ' ' * 10))
 
     def export_copy_sql(self, sobject_name, schema_mgr: SchemaManager, just_sample=False, timestamp=None, path=None):
-        if path is None: path = './'
+        if path is None:
+            path = './'
 
         sobject_name = sobject_name.lower()
         if not self.context.dbdriver.table_exists(sobject_name):

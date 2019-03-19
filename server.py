@@ -1,31 +1,18 @@
 __author__ = 'mark'
 from flask import Flask, render_template, request, abort
 from flask_cors import cross_origin, CORS
-from flask_socketio import SocketIO
 from flask_socketio import emit
 from db.mdatadb import MDEngine
 import json
 
-# import services
 import services.api
-#from services.DBList import RestDBList
-#from services.TestEnv import TestEnv
- #from services.SaveEnv import SaveEnv
-#from services.Tables import GetTables
+
 
 app = Flask(__name__)
 CORS(app)
 app.config['SECRET_KEY'] = 'secret!'
-#socketio = SocketIO(app)
 
-#api = Api(app)
 app.debug = True
-
-#api.add_resource(RestDBList, '/services/envlist')
-#api.add_resource(TestEnv, '/services/testEnv')
-#api.add_resource(SaveEnv, '/services/saveEnv')
-#api.add_resource(GetTables, '/services/tables')
-
 
 
 @app.route("/")
