@@ -1,14 +1,11 @@
 import string
 from flask_restful import Resource
 from flask import request
-from salesforce.sfapi import SFClient
 
 __author__ = 'mark'
 
-from schema import SchemaManager
-from db.mdatadb import MDEngine
-from db.mdatadb import ConfigEnv
-import json
+from connections import Connections
+from connections import ConnectionConfig
 
 
 class SaveEnv(Resource):
@@ -30,13 +27,13 @@ class SaveEnv(Resource):
             dbname = env['dbname']
             envid = None
             if 'envid' in env: envid = env['envid']
-            mde = MDEngine()
+            mde = Connections()
             sfenv = mde.get_db_env(dbname)
             if envid is None:
                 if not sfenv is None:
                     return {'success':False, 'message':'Database name {0} already in use'.format(dbname)}
                 else:
-                    sfenv = ConfigEnv()
+                    sfenv = ConnectionConfig()
 
             username = env['login']
             password = env['password']

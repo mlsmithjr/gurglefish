@@ -11,14 +11,18 @@ import mysql.connector
 import config
 import tools
 from DriverManager import DbDriverMeta, GetDbTablesResult
-from db.mdatadb import ConfigEnv
+from connections import ConnectionConfig
 
+
+#
+#  Work in progress
+#
 
 class Driver(DbDriverMeta):
 
     driver_type = "mysql"
 
-    def connect(self, dbenv: ConfigEnv):
+    def connect(self, dbenv: ConnectionConfig):
         self.dbenv = dbenv
         dbport = dbenv.dbport if not dbenv.dbport is None and len(dbenv.dbport) > 2 else '3306'
         self.db = mysql.connector.connect(user=dbenv.dbuser, password=dbenv.dbpass, host=dbenv.dbhost, port=dbport, database=dbenv.dbname)
@@ -383,7 +387,7 @@ class Driver(DbDriverMeta):
         select = 'select ' + ','.join(field_names) + ' from ' + sobject_name
         return select
 
-    def getMaxTimestamp(self, tablename):
+    def max_timestamp(self, tablename):
         col_cursor = self.db.cursor()
         col_cursor.execute('select max(lastmodifieddate) from ' + self.fq_table(tablename))
         stamp, = col_cursor.fetchone()

@@ -8,7 +8,7 @@ import configparser
 from config import storagedir
 
 
-class ConfigEnv(object):
+class ConnectionConfig(object):
     def __init__(self, d):
         self.fields = d
 
@@ -17,7 +17,7 @@ class ConfigEnv(object):
 
     @classmethod
     def from_dict(cls, d):
-        return ConfigEnv(d)
+        return ConnectionConfig(d)
 
     def to_json(self):
         return dict([(k,v) for k,v in self.fields.items()])
@@ -130,7 +130,7 @@ class ConfigEnv(object):
         self.fields['dbport'] = value
 
 
-class MDEngine(object):
+class Connections(object):
     def __init__(self, dbpath=None):
         if dbpath is None:
             dbpath = os.path.join(storagedir, 'connections.ini')
@@ -138,7 +138,7 @@ class MDEngine(object):
         if os.path.exists(dbpath):
             config = configparser.ConfigParser()
             config.read(self.dbpath)
-            self.data = [ConfigEnv(config[section]) for section in config.sections()]
+            self.data = [ConnectionConfig(config[section]) for section in config.sections()]
         else:
             self.data = []
 
@@ -151,7 +151,7 @@ class MDEngine(object):
     def fetch_dblist(self):
         return self.data
 
-    def get_db_env(self, envname) -> Optional[ConfigEnv]:
+    def get_db_env(self, envname) -> Optional[ConnectionConfig]:
         for e in self.data:
             if e.id == envname:
                 return e

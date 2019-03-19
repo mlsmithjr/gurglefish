@@ -1,7 +1,7 @@
 
 import os
 from unittest import TestCase
-from db.mdatadb import MDEngine, ConfigEnv
+from connections import Connections, ConnectionConfig
 
 __author__ = 'mark'
 
@@ -10,8 +10,8 @@ class TestMDEngine(TestCase):
     def test_dblist(self):
         if os.path.exists('/tmp/mdata_test.db'):
             os.unlink('/tmp/mdata_test.db')
-        mde = MDEngine('/tmp/mdata_test.db')
-        sfe = ConfigEnv()
+        mde = Connections('/tmp/mdata_test.db')
+        sfe = ConnectionConfig()
         sfe.dbname = 'test'
         sfe.authurl = 'https://test.salesforce.com'
         sfe.consumer_key = 'abc'

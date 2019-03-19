@@ -1,6 +1,5 @@
-
 import tools
-from schema import SchemaManager
+from schema import SFSchemaManager
 from sfexport import SFExporter
 from sfimport import SFImporter
 import argparse
@@ -36,13 +35,15 @@ def load_log_config():
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(epilog='@file arguments designate a file containing actual arguments, one per line')
+    parser = argparse.ArgumentParser(
+        epilog='@file arguments designate a file containing actual arguments, one per line')
     group = parser.add_mutually_exclusive_group()
     parser.add_argument("env", help="Environment/DB settings name", metavar="env_name")
     group.add_argument("--sync", help="sync table updates", nargs="*", metavar="sobject|@file")
     group.add_argument("--schema", help="load sobject schema and create tables", nargs="*", metavar="sobject|@file")
     group.add_argument("--export", help="export full sobject data", nargs="+", metavar="sobject|@file")
-    group.add_argument("--load", help="load/import full table data, table must be empty", nargs="*", metavar="sobject|@file")
+    group.add_argument("--load", help="load/import full table data, table must be empty", nargs="*",
+                       metavar="sobject|@file")
     parser.add_argument("--inspect", help="inspect objects", action="store_true")
     parser.add_argument("--sample", help="sample data (500 rows)", action="store_true")
     group.add_argument("--init", help="initialize configuration for given environment", action="store_true")
@@ -60,7 +61,7 @@ if __name__ == '__main__':
     if context is None:
         exit(1)
 
-    schema_mgr = SchemaManager(context)
+    schema_mgr = SFSchemaManager(context)
 
     if args.init:
         if context.filemgr.get_configured_tables() is not None:
@@ -120,6 +121,3 @@ if __name__ == '__main__':
             logger.info('loading {}'.format(tablename))
             count = imp.bulk_load(tablename)
             logger.info('loaded {} records'.format(count))
-
-
-

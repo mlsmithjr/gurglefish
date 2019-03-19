@@ -1,15 +1,15 @@
 import unittest
 
 import DriverManager
-from db.mdatadb import MDEngine
+from connections import Connections
 
 
 class TestMDEngine(unittest.TestCase):
 
     def test_upsert(self):
-        mde = MDEngine()
+        mde = Connections()
         env = mde.get_db_env('pgtesting')
-        dbdriver = DriverManager.Manager().getDriver('postgresql')
+        dbdriver = DriverManager.Manager().get_driver('postgresql')
         dbdriver.connect(env)
         try:
             dbdriver.exec_dml('drop table cars')

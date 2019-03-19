@@ -3,7 +3,7 @@ from typing import Optional
 
 import DriverManager
 from context import Context
-from db.mdatadb import MDEngine, ConfigEnv
+from connections import Connections
 from salesforce.sfapi import SFClient
 import logging
 
@@ -11,7 +11,7 @@ _log = logging.getLogger('main')
 
 
 def setup_env(envname) -> Optional[Context]:
-    mde = MDEngine()
+    mde = Connections()
     env = mde.get_db_env(envname)
     if env is None:
         _log.error(f'Configuration for {envname} not found')
@@ -24,15 +24,10 @@ def setup_env(envname) -> Optional[Context]:
         _log.error(f'Unable to connect to {env.authurl} as {env.login}: {str(ex)}')
         return None
 
-    dbdriver = DriverManager.Manager().getDriver('postgresql')
+    dbdriver = DriverManager.Manager().get_driver('postgresql')
     if not dbdriver.connect(env):
         return None
     return Context(env, dbdriver, sf)
-
-
-def save_env(cfg: ConfigEnv) -> None:
-    mde = MDEngine()
-    mde.save(cfg)
 
 
 def json_serial(obj):
@@ -42,7 +37,6 @@ def json_serial(obj):
         serial = obj.isoformat()
         return serial
     return str(obj)
-    #raise TypeError("Type not serializable")
 
 
 def dict_list_to_dict(alist, keyfield):
@@ -54,3 +48,13 @@ def dict_list_to_dict(alist, keyfield):
         key = item[keyfield]
         result[key] = item
     return result
+
+
+def sf_timestamp(t: datetime):
+    s = t.isoformat()[0:19]
+    s += '+00:00'
+    return s
+
+
+def parse_timestamp(t):
+    return datetime.datetime.strptime(t[0:19], '%Y-%m-%dT%H:%M:%S')

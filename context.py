@@ -1,21 +1,16 @@
-import os
-
 import config
+from DriverManager import DbDriverMeta
 from FileManager import FileManager
-from db.mdatadb import ConfigEnv
+from connections import ConnectionConfig
+from salesforce.sfapi import SFClient
 
 
 class Context:
-    filemgr = None
-    env = None
-    driver = None
-    sfapi = None
 
-    def __init__(self, env: ConfigEnv, dbdriver, sfclient):
+    def __init__(self, env: ConnectionConfig, dbdriver: DbDriverMeta, sfclient: SFClient):
         self.env = env
         self.driver = dbdriver
         self.sfapi = sfclient
-
         self.filemgr = FileManager(config.storagedir, self.env.id)
 
     @property
@@ -29,4 +24,3 @@ class Context:
     @property
     def sfclient(self):
         return self.sfapi
-

@@ -1,27 +1,22 @@
 import logging
-import os
 from typing import Dict
 
 from context import Context
 from objects.files import LocalTableConfig
+from salesforce.sfapi import SObjectFields
 
 __author__ = 'mark'
 
 
-class SchemaManager:
-    db = None
-    filemgr = None
-    sfclient = None
-    driver = None
+class SFSchemaManager:
     createmap = {}
     createstack = []
     fieldmap = {}
     refs = {}
     sodict = dict()
-    filters = []
     log = logging.getLogger('schema')
 
-    def __init__(self, context : Context):
+    def __init__(self, context: Context):
         self.driver = context.dbdriver
         self.sfclient = context.sfclient
         self.filemgr = context.filemgr
@@ -30,7 +25,7 @@ class SchemaManager:
         self.context = context
 
     def inspect(self):
-        solist = self.sfclient.getSobjectList()
+        solist = self.sfclient.get_sobject_list()
         solist = [sobj for sobj in solist if self.accept_sobject(sobj)]
         for so in solist:
             #
@@ -76,14 +71,10 @@ class SchemaManager:
         if sobj['name'].endswith('_del__c'):
             return False
 
-        if not sobj['custom']:
-            if not name in ['Account','Opportunity','User','Contact','Asset','Campaign','CampaignMember','Contract','Lead','RecordType']:
-                return False
-        if sobj['customSetting'] == True or sobj['replicateable'] == False or sobj['updateable'] == False:
+        if sobj['customSetting'] is True or sobj['replicateable'] is False or sobj['updateable'] is False:
             return False
-        if name.endswith('__Tag') or name.endswith('__History') or name.endswith('__Feed'): return False
-#        if name.find('__') != name.find('__c'):
-#            return False
+        if name.endswith('__Tag') or name.endswith('__History') or name.endswith('__Feed'):
+            return False
         if name[0:4] == 'Apex' or name in ('scontrol', 'weblink', 'profile'):
             return False
         return True
@@ -142,37 +133,25 @@ class SchemaManager:
         self.filemgr.save_table_create(new_sobject_name, create_table_dml + ';\n\n')
         self.filemgr.save_sobject_query(new_sobject_name, select)
 
-        #
-        # now create the table, if needed
-        #
-
-        # try:
-        #     if not self.driver.table_exists(sobject_name):
-        #         print('creating ' + sobject_name)
-        #         self.driver.exec_dml(create_table_dml)
-        #         self.driver.maintain_indexes(sobject_name, fields)
-        # except Exception as ex:
-        #     print(ex)
-
-    def update_sobject(self, sobject_name, allow_add = True, allow_drop = True):
+    def update_sobject(self, sobject_name: str, allow_add=True, allow_drop=True):
         sobject_name = sobject_name.lower()
 
-        sobj_columns = self.sfclient.get_field_map(sobject_name)
+        sobj_columns: SObjectFields = self.sfclient.get_field_list(sobject_name)
         table_columns = self.driver.get_db_columns(sobject_name)
 
         #
         # check for added/dropped columns
         #
-        sobj_field_names = set([k.lower() for k in sobj_columns.keys()])
         table_field_names = set([tbl['column_name'] for tbl in table_columns])
-        new_fields = sobj_field_names - table_field_names
-        dropped_fields = table_field_names - sobj_field_names
+        new_fields = sobj_columns.names() - table_field_names
+        dropped_fields = table_field_names - sobj_columns.names()
+
         if len(new_fields) > 0:
             if not allow_add:
-                self.log.warn('  warning: new columns found for table {}, auto-create of new columns disabled, skipping'.format(sobject_name))
+                self.log.warning(f'  new column found for {sobject_name}, auto-create disabled, skipping')
             else:
                 self.log.info(f'  new columns found, updating table and indexes')
-                new_field_defs = [sobj_columns[f] for f in new_fields]
+                new_field_defs = [sobj_columns.find(f) for f in new_fields]
                 newfieldmap = self.driver.alter_table_add_columns(new_field_defs, sobject_name)
                 if len(newfieldmap) > 0:
                     self.driver.maintain_indexes(sobject_name, new_field_defs)
@@ -180,7 +159,8 @@ class SchemaManager:
                     fieldmap = self.filemgr.get_sobject_map(sobject_name)
                     fieldmap.extend(newfieldmap)
                     self.filemgr.save_sobject_map(sobject_name, fieldmap)
-                    select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap], sobject_name)
+                    select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap],
+                                                               sobject_name)
                     self.filemgr.save_sobject_query(sobject_name, select)
                     parser = self.driver.make_transformer(sobject_name, sobject_name, fieldmap)
                     self.filemgr.save_sobject_transformer(sobject_name, parser)
@@ -189,7 +169,7 @@ class SchemaManager:
 
         if len(dropped_fields) > 0:
             if not allow_drop:
-                self.log.warn('  warning: dropped column(s detected for table {}, auto-drop disabled, skipping'.format(sobject_name))
+                self.log.warning(f'  dropped column detected for {sobject_name}, auto-drop disabled, skipping')
                 # do not allow sync until field(s) allowed to be dropped
                 return False
             fieldmap = self.filemgr.get_sobject_map(sobject_name)
@@ -211,6 +191,3 @@ class SchemaManager:
             self.filemgr.save_sobject_fields(sobject_name, [f for f in sobj_columns.values()])
 
         return True
-
-
-

@@ -11,7 +11,7 @@ import arrow
 import querytools
 import tools
 from context import Context
-from schema import SchemaManager
+from schema import SFSchemaManager
 from objects.files import LocalTableConfig
 
 __author__ = 'mark'
@@ -25,7 +25,7 @@ class SFExporter:
         self.storagedir = context.filemgr.exportdir
         os.makedirs(self.storagedir, exist_ok=True)
 
-    def sync_tables(self, schema_mgr: SchemaManager):
+    def sync_tables(self, schema_mgr: SFSchemaManager):
         table_config: [LocalTableConfig] = self.context.filemgr.get_configured_tables()
         tablelist: [LocalTableConfig] = [table for table in table_config if table.enabled]
         jobid = self.context.dbdriver.start_sync_job()
@@ -43,7 +43,7 @@ class SFExporter:
                         print('sync of {} skipped due to warnings'.format(tablename))
                         return
 
-                tstamp = self.context.dbdriver.getMaxTimestamp(tablename)
+                tstamp = self.context.dbdriver.max_timestamp(tablename)
                 self.etl(jobid, self.context.filemgr.get_sobject_query(tablename), tablename, timestamp=tstamp)
         finally:
             self.context.dbdriver.finish_sync_job(jobid)
@@ -99,7 +99,7 @@ class SFExporter:
             cur.close()
             journal.close()
 
-    def export_copy_sql(self, sobject_name, schema_mgr: SchemaManager, just_sample=False, timestamp=None):
+    def export_copy_sql(self, sobject_name, schema_mgr: SFSchemaManager, just_sample=False, timestamp=None):
 
         sobject_name = sobject_name.lower()
         if not self.context.dbdriver.table_exists(sobject_name):

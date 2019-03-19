@@ -2,14 +2,12 @@ from flask_restful import Resource
 
 __author__ = 'mark'
 
-from schema import SchemaManager
-from db.mdatadb import MDEngine
-import json
+from connections import Connections
 
 
 class RestDBList(Resource):
     def get(self):
-        mde = MDEngine()
+        mde = Connections()
         thelist = mde.fetch_dblist()
         payload = []
         for sfe in thelist:

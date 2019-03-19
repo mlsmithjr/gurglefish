@@ -7,7 +7,7 @@ import datetime
 import os
 import config
 from DriverManager import DbDriverMeta
-from schema import SchemaManager
+from schema import SFSchemaManager
 
 __author__ = 'mark'
 
@@ -25,7 +25,7 @@ def json_serial(obj):
 class SFImporter:
     context = None
 
-    def __init__(self, context, schema_mgr : SchemaManager):
+    def __init__(self, context, schema_mgr : SFSchemaManager):
         self.context = context
         self.storagedir = context.filemgr.exportdir
         self.schema_mgr = schema_mgr

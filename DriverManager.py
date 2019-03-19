@@ -1,10 +1,9 @@
-
+import datetime
 import pkgutil
 from abc import ABCMeta, abstractmethod
-import string
-from typing import List
+from typing import List, Optional
 
-from db.mdatadb import ConfigEnv
+from connections import ConnectionConfig
 from salesforce.sfapi import SFClient
 
 
@@ -26,7 +25,7 @@ class DbDriverMeta(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def connect(self, env:ConfigEnv):
+    def connect(self, env: ConnectionConfig):
         pass
 
     @abstractmethod
@@ -34,19 +33,19 @@ class DbDriverMeta(object):
         pass
 
     @abstractmethod
-    def table_exists(self, table_name: string):
+    def table_exists(self, table_name: str):
         pass
 
     @abstractmethod
-    def get_db_columns(self, table_name: string):
+    def get_db_columns(self, table_name: str):
         pass
 
     @abstractmethod
-    def make_create_table(self, sf: SFClient, sobject_name: string):
+    def make_create_table(self, sf: SFClient, sobject_name: str):
         pass
 
     @abstractmethod
-    def getMaxTimestamp(self, tablename: string):
+    def max_timestamp(self, tablename: str):
         pass
 
     @abstractmethod
@@ -54,31 +53,27 @@ class DbDriverMeta(object):
         pass
 
     @abstractmethod
-    def make_transformer(self, sobject_name, table_name, fieldlist):
+    def make_transformer(self, sobject_name, table_name: str, fieldlist):
         pass
 
     @abstractmethod
-    def make_select_statement(self, field_names, sobject_name):
+    def maintain_indexes(self, sobject_name: str, field_defs):
         pass
 
     @abstractmethod
-    def maintain_indexes(self, sobject_name, field_defs):
+    def record_count(self, table_name: str):
         pass
 
     @abstractmethod
-    def record_count(self, table_name):
+    def get_table_fields(self, table_name: str):
         pass
 
     @abstractmethod
-    def get_table_fields(self, table_name):
+    def upsert(self, cur, table_name: str, trec: dict):
         pass
 
     @abstractmethod
-    def upsert(self, cur, table_name, trec: dict, journal=None):
-        pass
-
-    @abstractmethod
-    def bulk_load(self, tablename):
+    def bulk_load(self, tablename: str):
         pass
 
     @abstractmethod
@@ -93,12 +88,8 @@ class DbDriverMeta(object):
     def insert_sync_stats(self, jobid, table_name, sync_start, sync_end, sync_since, inserts, updates):
         pass
 
-#    @abstractmethod
-#    def recent_sync_timestamp(self, tablename = None):
-#        pass
-
     @abstractmethod
-    def clean_house(self, date_constraint):
+    def clean_house(self, date_constraint: datetime):
         pass
 
 
@@ -113,28 +104,7 @@ class Manager(object):
             cls = getattr(mod, 'Driver')
             self._res[mod_name] = cls
 
-        # check subfolders
-        # lst = os.listdir(folder)
-        # dir = []
-        # for d in lst:
-        #     s = os.path.abspath(folder) + os.sep + d
-        #     if os.path.isdir(s) and os.path.exists(s + os.sep + "__init__.py"):
-        #         dir.append(d)
-        # # load the modules
-        # for d in dir:
-        #     print('importing ' + d)
-        #     res[d] = importlib.import_module(folder + "." + d)
-    #        res[d] = __import__(folder + "." + d, fromlist = ["*"])
-
-    def getDriver(self, driver_name) -> DbDriverMeta:
+    def get_driver(self, driver_name) -> Optional[DbDriverMeta]:
         if driver_name in self._res:
             return self._res[driver_name]()
         return None
-
-
-if __name__ == '__main__':
-    mgr = Manager()
-    driver = mgr.getDriver('postgresql')
-#    cls = getClassByName(mods["postgresql"], "PgDriver")
-#    obj = cls()
-

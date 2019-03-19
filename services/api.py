@@ -1,14 +1,14 @@
 
 import DriverManager
 import tools
-from db.mdatadb import MDEngine, ConfigEnv
+from connections import Connections, ConnectionConfig
 from salesforce.sfapi import SFClient
 
 MAX_ALLOWED_SEED_RECORDS = 50000
 
 
 def envlist():
-    mde = MDEngine()
+    mde = Connections()
     thelist = mde.fetch_dblist()
     payload = []
     for sfe in thelist:
@@ -25,9 +25,9 @@ def envlist():
 
 
 def verifydb(config):
-    cenv = ConfigEnv.from_dict(config)
+    cenv = ConnectionConfig.from_dict(config)
     try:
-        dbdriver = DriverManager.Manager().getDriver('postgresql')
+        dbdriver = DriverManager.Manager().get_driver('postgresql')
         dbdriver.connect(cenv)
     except Exception as ex:
         return {'verified': False, 'message': str(ex)}
@@ -35,7 +35,7 @@ def verifydb(config):
 
 
 def verify_salesforce(config):
-    env = ConfigEnv.from_dict(config)
+    env = ConnectionConfig.from_dict(config)
     try:
         sf = SFClient()
         sf.login(env.consumer_key, env.consumer_secret, env.login, env.password, env.authurl)

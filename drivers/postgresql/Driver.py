@@ -14,7 +14,7 @@ import psycopg2.extras
 import config
 import tools
 from DriverManager import DbDriverMeta, GetDbTablesResult
-from db.mdatadb import ConfigEnv
+from connections import ConnectionConfig
 
 
 class Driver(DbDriverMeta):
@@ -28,7 +28,7 @@ class Driver(DbDriverMeta):
         self.db = None
         self.storagedir = None
 
-    def connect(self, dbenv: ConfigEnv):
+    def connect(self, dbenv: ConnectionConfig):
         self.dbenv = dbenv
         dbport = dbenv.dbport if dbenv.dbport is not None and len(dbenv.dbport) > 2 else '5432'
         try:
@@ -120,8 +120,10 @@ class Driver(DbDriverMeta):
         cur = self.cursor
         if sync_since is None:
             sync_since = datetime.datetime(1970, 1, 1, 0, 0, 0)
-        dml = f'insert into {self.schema_name}.gf_mdata_sync_stats (jobid, table_name, inserts, updates, sync_start, sync_end, sync_since) ' + \
-              'values (%s,%s,%s,%s,%s,%s,%s)'
+        dml = f'insert into {self.schema_name}.gf_mdata_sync_stats ' + \
+              '(jobid, table_name, inserts, updates, sync_start, ' + \
+              'sync_end, sync_since) values (%s,%s,%s,%s,%s,%s,%s)'
+
         cur.execute(dml, (jobid, table_name, inserts, updates, sync_start, sync_end, sync_since))
         self.db.commit()
 
@@ -131,16 +133,6 @@ class Driver(DbDriverMeta):
         cur.execute(dml, (date_constraint,))
         self.db.commit()
         cur.close()
-
-    #    def recent_sync_timestamp(self, tablename = None):
-    #        cur = self.cursor
-    #        if tablename is None:
-    #            cur.execute(f'select max(date_start) from {self.schema_name}.gf_mdata_sync_jobs')
-    #        else:
-    #            cur.execute(f'select max(sync_end) from {self.schema_name}.gf_mdata_sync_stats where table_name=%s', (tablename,))
-    #        result = cur.fetchone()
-    #        cur.close()
-    #        return result
 
     def insert_schema_change(self, table_name: string, col_name: string, operation: string):
         cur = self.cursor
@@ -222,9 +214,9 @@ class Driver(DbDriverMeta):
                 #
                 # This is a legit case. It is probably due to overlapping lastmodifieddate in sync query where nothing
                 # actually changed.
-                return (False, False)
+                return False, False
 
-            assert (not pkey is None)
+            assert pkey is not None
             sql = 'update {} set '.format(self.fq_table(table_name))
             sets = []
             for name in namelist:
@@ -235,7 +227,7 @@ class Driver(DbDriverMeta):
                 journal.write(bytes('u:{} --> {}\n'.format(sql, json.dumps(data, default=tools.json_serial)), 'utf-8'))
             cur.execute(sql, data)
             updated = True
-        return (inserted, updated)
+        return inserted, updated
 
     def commit(self):
         self.db.commit()
@@ -325,12 +317,7 @@ class Driver(DbDriverMeta):
             sql += 'char(15) primary key '
             # fieldname = 'sfid'
         elif fieldtype == 'reference':
-            # refto = field['referenceTo'][0]
             sql += 'char(15) '
-            # if not refto in table_names and refto != sobject_name:
-            #    self.create_table(refto)
-            # self.refs[sobject_name].append('alter table {0} add column {1} char(15) references {2}(sfid)'.format(sobject_name, fieldname, refto))
-            # continue
         elif fieldtype == 'boolean':
             sql += 'boolean '
         elif fieldtype == 'double':
@@ -348,21 +335,6 @@ class Driver(DbDriverMeta):
             return []
         elif fieldtype == 'address':
             return []
-            #
-            # this is a weird exception.  Handle differently
-            #
-            # newfieldlist = []
-            # prefix = field['name']
-            # if field['name'].endswith('Address'):
-            #     prefix = prefix[0:-7]
-            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'city', 'db_field': prefix+'City', 'fieldtype': 'address'})
-            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'country', 'db_field': prefix+'Country', 'fieldtype': 'address'})
-            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'postalCode', 'db_field': prefix+'PostalCode', 'fieldtype': 'address'})
-            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'state', 'db_field': prefix+'State', 'fieldtype': 'address'})
-            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'street', 'db_field': prefix+'Street', 'fieldtype': 'address'})
-            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'longitude', 'db_field': prefix+'Longitude', 'fieldtype': 'address'})
-            # newfieldlist.append({'fieldlen': fieldlen, 'sql': 'text ', 'table_name': sobject_name, 'sobject_field': prefix, 'subfield':'latitude', 'db_field': prefix+'Latitude', 'fieldtype': 'address'})
-            # return newfieldlist
         else:
             self.log.error(f'field {fieldname} unknown type {fieldtype} for sobject {sobject_name}')
             raise Exception('field {0} unknown type {1} for sobject {2}'.format(fieldname, fieldtype, sobject_name))
@@ -378,7 +350,6 @@ class Driver(DbDriverMeta):
         for field in new_field_defs:
             col_def = self.make_column(sobject_name, field)
             if col_def is None:
-                #                print('unsupported column type for {} - skipped'.format(field['name']))
                 continue
             col = col_def[0]
             ddl = ddl_template.format(self.fq_table(sobject_name), col['db_field'], col['dml'])
@@ -387,7 +358,8 @@ class Driver(DbDriverMeta):
             newcols.append(col)
 
             # record change to schema
-            sql = f'insert into {self.schema_name}.gf_mdata_schema_chg (table_name, col_name, operation) values (%s,%s,%s)'
+            sql = f'insert into {self.schema_name}.gf_mdata_schema_chg ' +\
+                  '(table_name, col_name, operation) values (%s,%s,%s)'
             cur.execute(sql, [sobject_name, col['db_field'], 'create'])
 
         self.db.commit()
@@ -436,11 +408,7 @@ class Driver(DbDriverMeta):
         sql = ',\n'.join(tablecols)
         return sobject_name, fieldlist, 'create table {0} ( \n{1} )\n'.format(self.fq_table(sobject_name), sql)
 
-    def make_select_statement(self, field_names, sobject_name):
-        select = 'select ' + ','.join(field_names) + ' from ' + sobject_name
-        return select
-
-    def getMaxTimestamp(self, tablename):
+    def max_timestamp(self, tablename: str):
         col_cursor = self.db.cursor()
         col_cursor.execute('select max(lastmodifieddate) from ' + self.fq_table(tablename))
         stamp, = col_cursor.fetchone()
@@ -448,7 +416,6 @@ class Driver(DbDriverMeta):
         return stamp
 
     def make_transformer(self, sobject_name, table_name, fieldlist):
-
         parser = 'from transformutils import id, bl, db, dt, st, ts, inte\n\n'
         parser += 'def parse(rec):\n' + \
                   '  result = dict()\n\n'
