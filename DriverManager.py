@@ -7,6 +7,16 @@ from connections import ConnectionConfig
 from salesforce.sfapi import SFClient
 
 
+class NewColumnDefinition(object):
+    def __init__(self, fieldlen: int, dml: str, table_name: str, sobject_field: str, db_field: str, fieldtype: str):
+        self.fieldlen = fieldlen
+        self.table_name = table_name
+        self.sobject_field = sobject_field
+        self.dml = dml
+        self.db_field = db_field
+        self.fieldtype = fieldtype
+
+
 class GetDbTablesResult(object):
 
     def __init__(self, name):

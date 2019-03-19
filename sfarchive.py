@@ -1,3 +1,5 @@
+from typing import Dict
+
 import tools
 from schema import SFSchemaManager
 from sfexport import SFExporter
@@ -67,7 +69,7 @@ if __name__ == '__main__':
         if context.filemgr.get_configured_tables() is not None:
             print('Initialization halted, config.yml already exists. Please remove manually to start over')
             exit(1)
-        sobject_list = schema_mgr.inspect()
+        sobject_list: [Dict] = schema_mgr.inspect()
         sobjectconfig = []
         for sobject in sobject_list:
             sobjectconfig.append(LocalTableConfig({'name': sobject['name'].lower(), 'enabled': False}))
@@ -75,7 +77,7 @@ if __name__ == '__main__':
         print('config created')
 
     if args.inspect:
-        thelist = schema_mgr.inspect()
+        thelist: [Dict] = schema_mgr.inspect()
         for entry in thelist:
             logger.info(entry['name'])
 

@@ -4,6 +4,7 @@ import operator
 from typing import Dict, Set, Optional
 
 import requests
+from fastcache import lru_cache
 
 MAX_BATCH_SIZE = 100
 _API_VERSION = '40.0'
@@ -112,14 +113,17 @@ class SFClient:
     def close(self):
         pass
 
+    @lru_cache(maxsize=3, typed=False)
     def get_sobject_definition(self, name: str) -> Dict:
         sobject_doc = self._invoke_get('sobjects/{}/describe'.format(name), {})
         return sobject_doc
 
+    @lru_cache(maxsize=1, typed=False)
     def get_sobject_list(self) -> [Dict]:
         payload = self._invoke_get('sobjects/', {})
         return payload['sobjects']
 
+    @lru_cache(maxsize=3, typed=False)
     def get_field_list(self, sobject_name: str) -> SObjectFields:
         fielddef = self._invoke_get('sobjects/%s/describe/' % (sobject_name,), {})
         fieldlist = fielddef['fields']

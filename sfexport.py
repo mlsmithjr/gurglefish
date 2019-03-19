@@ -8,7 +8,6 @@ import datetime
 
 import arrow
 
-import querytools
 import tools
 from context import Context
 from schema import SFSchemaManager
@@ -56,7 +55,7 @@ class SFExporter:
 
         xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
         if timestamp is not None:
-            soql += " where SystemModStamp > {}".format(querytools.sfTimestamp(timestamp))
+            soql += " where SystemModStamp > {}".format(tools.sf_timestamp(timestamp))
             soql += " order by SystemModStamp ASC"
         cur = dbdriver.cursor
         counter = 0
@@ -116,7 +115,7 @@ class SFExporter:
 
         soql = 'select {} from {}'.format(','.join(soqlfields), sobject_name)
         if timestamp is not None:
-            soql += ' where SystemModStamp > {0}'.format(querytools.sfTimestamp(timestamp))
+            soql += ' where SystemModStamp > {0}'.format(tools.sf_timestamp(timestamp))
         if just_sample:
             self.logger.info('sampling 500 records max')
             soql += ' limit 500'

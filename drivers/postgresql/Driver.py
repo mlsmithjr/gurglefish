@@ -3,7 +3,7 @@ import logging
 import subprocess
 import os
 import string
-from typing import List
+from typing import List, Dict
 import datetime
 
 from fastcache import lru_cache
@@ -13,7 +13,7 @@ import psycopg2.extras
 
 import config
 import tools
-from DriverManager import DbDriverMeta, GetDbTablesResult
+from DriverManager import DbDriverMeta, GetDbTablesResult, NewColumnDefinition
 from connections import ConnectionConfig
 
 
@@ -236,7 +236,7 @@ class Driver(DbDriverMeta):
         self.db.rollback()
 
     @lru_cache(maxsize=5, typed=False)
-    def get_table_fields(self, table_name):
+    def get_table_fields(self, table_name: str) -> Dict:
         cur = self.new_map_cursor
         sql = "select column_name, data_type, character_maximum_length, ordinal_position " + \
               "from information_schema.columns " + \
@@ -252,7 +252,7 @@ class Driver(DbDriverMeta):
                                               'ordinal_position': c['ordinal_position']}
         return table_fields
 
-    def record_count(self, table_name):
+    def record_count(self, table_name: str) -> int:
         table_cursor = self.db.cursor()
         table_cursor.execute('SELECT count(*) FROM {}.{}'.format(self.schema_name, table_name))
         records = table_cursor.fetchone()
@@ -269,7 +269,7 @@ class Driver(DbDriverMeta):
         result = [GetDbTablesResult(row[0]) for row in tables]
         return result
 
-    def table_exists(self, table_name):
+    def table_exists(self, table_name: str) -> bool:
         table_cursor = self.db.cursor()
         table_cursor.execute(
             "select count(*) from information_schema.tables where table_name = %s and table_schema=%s",
@@ -278,7 +278,7 @@ class Driver(DbDriverMeta):
         cnt, = val
         return cnt > 0
 
-    def get_db_columns(self, table_name):
+    def get_db_columns(self, table_name: str) -> List:
         col_cursor = self.new_map_cursor
         col_cursor.execute(
             "select * from information_schema.columns where table_name=%s " +
@@ -288,7 +288,7 @@ class Driver(DbDriverMeta):
         col_cursor.close()
         return cols
 
-    def make_column(self, sobject_name: str, field: dict) -> list:
+    def _make_column(self, sobject_name: str, field: Dict) -> [NewColumnDefinition]:
         """
             returns:
                 list(dict(
@@ -339,34 +339,33 @@ class Driver(DbDriverMeta):
             self.log.error(f'field {fieldname} unknown type {fieldtype} for sobject {sobject_name}')
             raise Exception('field {0} unknown type {1} for sobject {2}'.format(fieldname, fieldtype, sobject_name))
 
-        newfieldlist = [{'fieldlen': fieldlen, 'dml': sql, 'table_name': sobject_name, 'sobject_field': field['name'],
-                         'db_field': fieldname, 'fieldtype': fieldtype}]
-        return newfieldlist
+        new_list = [NewColumnDefinition(fieldlen, sql, sobject_name, field['name'], fieldname, fieldtype)]
+        return new_list
 
-    def alter_table_add_columns(self, new_field_defs, sobject_name):
+    def alter_table_add_columns(self, new_field_defs, sobject_name: str) -> [str]:
         ddl_template = "ALTER TABLE {} ADD COLUMN {} {}"
         cur = self.db.cursor()
         newcols = []
         for field in new_field_defs:
-            col_def = self.make_column(sobject_name, field)
-            if col_def is None:
+            col_def: [NewColumnDefinition] = self._make_column(sobject_name, field)
+            if len(col_def) == 0:
                 continue
             col = col_def[0]
-            ddl = ddl_template.format(self.fq_table(sobject_name), col['db_field'], col['dml'])
-            print('    adding column {} to {}'.format(col['db_field'], sobject_name))
+            ddl = ddl_template.format(self.fq_table(sobject_name), col.db_field, col.dml)
+            print('    adding column {} to {}'.format(col.db_field, sobject_name))
             cur.execute(ddl)
             newcols.append(col)
 
             # record change to schema
             sql = f'insert into {self.schema_name}.gf_mdata_schema_chg ' +\
                   '(table_name, col_name, operation) values (%s,%s,%s)'
-            cur.execute(sql, [sobject_name, col['db_field'], 'create'])
+            cur.execute(sql, [sobject_name, col.db_field, 'create'])
 
         self.db.commit()
         cur.close()
         return newcols
 
-    def alter_table_drop_columns(self, drop_field_names, sobject_name):
+    def alter_table_drop_columns(self, drop_field_names: [str], sobject_name: str):
         ddl_template = 'ALTER TABLE {} DROP COLUMN {}'
         cur = self.db.cursor()
         for field in drop_field_names:
@@ -392,19 +391,19 @@ class Driver(DbDriverMeta):
         self.db.commit()
         cur.close()
 
-    def make_create_table(self, fields, sobject_name):
+    def make_create_table(self, fields: Dict, sobject_name: str):
         sobject_name = sobject_name.lower()
         print('new sobject: ' + sobject_name)
         tablecols = []
         fieldlist = []
 
         for field in fields:
-            m = self.make_column(sobject_name, field)
-            if m is None:
+            m: [NewColumnDefinition] = self._make_column(sobject_name, field)
+            if len(m) == 0:
                 continue
             for column in m:
                 fieldlist.append(column)
-                tablecols.append('  ' + column['db_field'] + ' ' + column['dml'])
+                tablecols.append('  ' + column.db_field + ' ' + column.dml)
         sql = ',\n'.join(tablecols)
         return sobject_name, fieldlist, 'create table {0} ( \n{1} )\n'.format(self.fq_table(sobject_name), sql)
 

@@ -1,6 +1,7 @@
 import logging
 from typing import Dict
 
+from DriverManager import DbDriverMeta
 from context import Context
 from objects.files import LocalTableConfig
 from salesforce.sfapi import SObjectFields
@@ -9,24 +10,30 @@ __author__ = 'mark'
 
 
 class SFSchemaManager:
-    createmap = {}
-    createstack = []
-    fieldmap = {}
-    refs = {}
-    sodict = dict()
-    log = logging.getLogger('schema')
 
     def __init__(self, context: Context):
-        self.driver = context.dbdriver
-        self.sfclient = context.sfclient
-        self.filemgr = context.filemgr
-        self.storagedir = self.filemgr.schemadir
         self.filters = context.filemgr.get_global_filters() + context.filemgr.get_filters()
         self.context = context
 
-    def inspect(self):
-        solist = self.sfclient.get_sobject_list()
-        solist = [sobj for sobj in solist if self.accept_sobject(sobj)]
+    @property
+    def driver(self) -> DbDriverMeta:
+        return self.context.driver
+
+    @property
+    def sfclient(self) -> SFClient:
+        return self.context.sfclient
+
+    @property
+    def filemgr(self) -> FileManager:
+        return self.context.filemgr
+
+    @property
+    def storagedir(self) -> str:
+        return self.context.filemgr.schemadir
+
+    def inspect(self) -> [Dict]:
+        solist: [Dict] = self.sfclient.get_sobject_list()
+        solist: [Dict] = [sobj for sobj in solist if self.accept_sobject(sobj)]
         for so in solist:
             #
             # enrich the data with the package name
@@ -102,6 +109,7 @@ class SFSchemaManager:
         self.filemgr.save_sobject_fields(new_sobject_name, fields)
         self.filemgr.save_sobject_transformer(new_sobject_name, parser)
         self.filemgr.save_sobject_map(new_sobject_name, fieldmap)
+        self.filemgr.save_table_create(new_sobject_name, create_table_dml + ';\n\n')
         self.filemgr.save_sobject_query(new_sobject_name, select)
 
         #
