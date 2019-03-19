@@ -23,6 +23,11 @@ class Driver(DbDriverMeta):
 
     driver_type = "postgresql"
 
+    def __init__(self):
+        self.dbenv = None
+        self.db = None
+        self.storagedir = None
+
     def connect(self, dbenv: ConfigEnv):
         self.dbenv = dbenv
         dbport = dbenv.dbport if dbenv.dbport is not None and len(dbenv.dbport) > 2 else '5432'
@@ -93,21 +98,22 @@ class Driver(DbDriverMeta):
                   '  date_start timestamp not null default now(),' + \
                   '  date_finish timestamp)'
             self.exec_dml(ddl)
-            self.exec_dml(f'alter table {self.schema_name}.gf_mdata_sync_stats add constraint ' +\
-                          'gf_mdata_sync_stats_job_fk foreign key (jobid) references ' + \
+            self.exec_dml(f'alter table {self.schema_name}.gf_mdata_sync_stats add constraint ' +
+                          'gf_mdata_sync_stats_job_fk foreign key (jobid) references ' +
                           f'{self.schema_name}.gf_mdata_sync_jobs(id) on delete cascade')
-
 
     def start_sync_job(self):
         cur = self.cursor
-        cur.execute(f'insert into {self.schema_name}.gf_mdata_sync_jobs (date_start) values (%s) returning id', (datetime.datetime.now(),))
+        cur.execute(f'insert into {self.schema_name}.gf_mdata_sync_jobs (date_start) values (%s) returning id',
+                    (datetime.datetime.now(),))
         rowid = cur.fetchone()[0]
         cur.close()
         return rowid
 
     def finish_sync_job(self, jobid):
         cur = self.cursor
-        cur.execute(f'update {self.schema_name}.gf_mdata_sync_jobs set date_finish=%s where id=%s', (datetime.datetime.now(), jobid))
+        cur.execute(f'update {self.schema_name}.gf_mdata_sync_jobs set date_finish=%s where id=%s',
+                    (datetime.datetime.now(), jobid))
         cur.close()
 
     def insert_sync_stats(self, jobid, table_name, sync_start, sync_end, sync_since, inserts, updates):
@@ -126,16 +132,15 @@ class Driver(DbDriverMeta):
         self.db.commit()
         cur.close()
 
-
-#    def recent_sync_timestamp(self, tablename = None):
-#        cur = self.cursor
-#        if tablename is None:
-#            cur.execute(f'select max(date_start) from {self.schema_name}.gf_mdata_sync_jobs')
-#        else:
-#            cur.execute(f'select max(sync_end) from {self.schema_name}.gf_mdata_sync_stats where table_name=%s', (tablename,))
-#        result = cur.fetchone()
-#        cur.close()
-#        return result
+    #    def recent_sync_timestamp(self, tablename = None):
+    #        cur = self.cursor
+    #        if tablename is None:
+    #            cur.execute(f'select max(date_start) from {self.schema_name}.gf_mdata_sync_jobs')
+    #        else:
+    #            cur.execute(f'select max(sync_end) from {self.schema_name}.gf_mdata_sync_stats where table_name=%s', (tablename,))
+    #        result = cur.fetchone()
+    #        cur.close()
+    #        return result
 
     def insert_schema_change(self, table_name: string, col_name: string, operation: string):
         cur = self.cursor

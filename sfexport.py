@@ -18,7 +18,6 @@ __author__ = 'mark'
 
 
 class SFExporter:
-
     logger = logging.getLogger('main')
 
     def __init__(self, context: Context):
@@ -50,14 +49,13 @@ class SFExporter:
             self.context.dbdriver.finish_sync_job(jobid)
             self.context.dbdriver.clean_house(arrow.now().shift(months=-2).datetime)
 
-    def etl(self, jobid, soql, sobject_name, timestamp=None, path=None):
-        if path is None: path = './'
+    def etl(self, jobid, soql, sobject_name, timestamp=None):
 
         sobject_name = sobject_name.lower()
         dbdriver = self.context.dbdriver
 
         xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
-        if not timestamp is None:
+        if timestamp is not None:
             soql += " where SystemModStamp > {}".format(querytools.sfTimestamp(timestamp))
             soql += " order by SystemModStamp ASC"
         cur = dbdriver.cursor
@@ -91,7 +89,8 @@ class SFExporter:
             dbdriver.commit()
             print('processed {}'.format(counter))
             if counter > 0:
-                dbdriver.insert_sync_stats(jobid, sobject_name, sync_start, datetime.datetime.now(), timestamp, inserted,
+                dbdriver.insert_sync_stats(jobid, sobject_name, sync_start, datetime.datetime.now(), timestamp,
+                                           inserted,
                                            updated)
         except Exception as ex:
             dbdriver.rollback()
@@ -100,46 +99,7 @@ class SFExporter:
             cur.close()
             journal.close()
 
-    def export_json(self, sobject_name, schema_mgr: SchemaManager, just_sample=False, timestamp=None, path=None):
-        if path is None:
-            path = './'
-
-        sobject_name = sobject_name.lower()
-        if not self.context.dbdriver.table_exists(sobject_name):
-            schema_mgr.create_table(sobject_name)
-
-        fieldlist = self.context.filemgr.get_sobject_map(sobject_name)
-        fieldmap = dict((f['db_field'].lower(), f) for f in fieldlist)
-
-        soqlfields = [fm['sobject_field'] for fm in fieldmap.values()]
-
-        soql = 'select {} from {}'.format(','.join(soqlfields), sobject_name)
-        if not timestamp is None:
-            soql += ' where SystemModStamp > {0}'.format(querytools.sfTimestamp(timestamp))
-        if just_sample:
-            self.logger.info('sampling 500 records max')
-            soql += ' limit 500'
-        counter = 0
-        totalSize = self.context.sfclient.record_count(sobject_name)
-        if sys.stdout.isatty():
-            print('{}: exporting {} records: 0%'.format(sobject_name, totalSize), end='\r', flush=True)
-        else:
-            print(f'{sobject_name}: exporting {totalSize} records')
-        with gzip.open(os.path.join(self.storagedir, sobject_name + '.json.gz'), 'wb', compresslevel=5) as export:
-            for rec in self.context.sfclient.query(soql):
-                export.write(json.dumps(rec, indent=4).encode('utf-8'))
-                counter += 1
-                if counter % 2000 == 0 and sys.stdout.isatty():
-                    print('{}: exporting {} records: {:.0f}%\r'.format(sobject_name, totalSize,
-                                                                       (counter / totalSize) * 100), end='\r',
-                          flush=True)
-            export.close()
-            if sys.stdout.isatty():
-                print("\nexported {} records{}".format(counter, ' ' * 10))
-
-    def export_copy_sql(self, sobject_name, schema_mgr: SchemaManager, just_sample=False, timestamp=None, path=None):
-        if path is None:
-            path = './'
+    def export_copy_sql(self, sobject_name, schema_mgr: SchemaManager, just_sample=False, timestamp=None):
 
         sobject_name = sobject_name.lower()
         if not self.context.dbdriver.table_exists(sobject_name):
@@ -155,17 +115,17 @@ class SFExporter:
         soqlfields = [fm['sobject_field'] for fm in fieldmap.values()]
 
         soql = 'select {} from {}'.format(','.join(soqlfields), sobject_name)
-        if not timestamp is None:
+        if timestamp is not None:
             soql += ' where SystemModStamp > {0}'.format(querytools.sfTimestamp(timestamp))
         if just_sample:
             self.logger.info('sampling 500 records max')
             soql += ' limit 500'
         counter = 0
-        totalSize = self.context.sfclient.record_count(sobject_name)
+        total_size = self.context.sfclient.record_count(sobject_name)
         if sys.stdout.isatty():
-            print('{}: exporting {} records: 0%'.format(sobject_name, totalSize), end='\r', flush=True)
+            print('{}: exporting {} records: 0%'.format(sobject_name, total_size), end='\r', flush=True)
         else:
-            print(f'{sobject_name}: exporting {totalSize} records')
+            print(f'{sobject_name}: exporting {total_size} records')
         with gzip.open(os.path.join(self.storagedir, sobject_name + '.exp.gz'), 'wb', compresslevel=5) as export:
             for rec in self.context.sfclient.query(soql):
                 trec = xlate_handler.parse(rec)
@@ -173,10 +133,9 @@ class SFExporter:
                 export.write(record)
                 counter += 1
                 if counter % 2000 == 0 and sys.stdout.isatty():
-                    print('{}: exporting {} records: {:.0f}%\r'.format(sobject_name, totalSize,
-                                                                       (counter / totalSize) * 100), end='\r',
+                    print('{}: exporting {} records: {:.0f}%\r'.format(sobject_name, total_size,
+                                                                       (counter / total_size) * 100), end='\r',
                           flush=True)
             export.close()
             if sys.stdout.isatty():
                 print("\nexported {} records{}".format(counter, ' ' * 10))
-

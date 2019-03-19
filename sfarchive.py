@@ -31,8 +31,8 @@ def make_arg_list(args_list):
 
 def load_log_config():
     with open('logging.yml', 'r') as configfile:
-        logconfig = yaml.load(configfile.read(), Loader=yaml.FullLoader)
-        return logconfig
+        _logconfig = yaml.load(configfile.read(), Loader=yaml.FullLoader)
+        return _logconfig
 
 
 if __name__ == '__main__':
@@ -98,11 +98,7 @@ if __name__ == '__main__':
 
     if args.sync is not None:
         exp = SFExporter(context)
-        if len(args.sync) > 0:
-            final_args = make_arg_list(args.sync)
-            exp.sync_tables(schema_mgr, final_args)
-        else:
-            exp.sync_tables(schema_mgr)
+        exp.sync_tables(schema_mgr)
 
     if args.schema is not None:
         if len(args.schema) > 0:
