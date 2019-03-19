@@ -60,11 +60,11 @@ def enable_sobject(envname, sobject_name):
     except Exception as ex:
         print(ex)
         return {'success': False, 'message': 'environment not found'}
-    config = ctx.filemgr.get_global_settings()
-    for so in config['configuration']['sobjects']:
-        if so['name'] == sobject_name:
-            so['enabled'] = True
-            ctx.filemgr.save_global_settings(config)
+    tables = ctx.filemgr.get_configured_tables()
+    for so in tables:
+        if so.name == sobject_name:
+            so.enabled = True
+            ctx.filemgr.save_configured_tables(tables)
             return {'success': True}
     return {'success': False, 'message': f'SObject {sobject_name} not found in {envname}'}
 
@@ -75,11 +75,11 @@ def disable_sobject(envname, sobject_name):
     except Exception as ex:
         print(ex)
         return {'success': False, 'message': 'environment not found'}
-    config = ctx.filemgr.get_global_settings()
-    for so in config['configuration']['sobjects']:
-        if so['name'] == sobject_name:
-            so['enabled'] = False
-            ctx.filemgr.save_global_settings(config)
+    tables = ctx.filemgr.get_configured_tables()
+    for so in tables:
+        if so.name == sobject_name:
+            so.enabled = False
+            ctx.filemgr.save_configured_tables(tables)
             return {'success': True}
     return {'success': False, 'message': f'SObject {sobject_name} not found in {envname}'}
 
