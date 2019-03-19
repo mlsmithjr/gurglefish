@@ -1,9 +1,10 @@
 import gzip
 import json
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 from objects.files import LocalTableConfig
+from salesforce.sfapi import SObjectFields
 
 
 class FileManager(object):
@@ -48,12 +49,12 @@ class FileManager(object):
         handler = loader.load_module(sobject_name)
         return handler
 
-    def get_sobject_fields(self, sobject_name):
+    def get_sobject_fields(self, sobject_name: str) -> Optional[SObjectFields]:
         os.makedirs(os.path.join(self.schemadir, sobject_name), exist_ok=True)
         filename = os.path.join(self.schemadir, sobject_name, sobject_name + '.json')
         try:
             with open(filename, 'r') as jsonfile:
-                return json.load(jsonfile)
+                return SObjectFields(json.load(jsonfile))
         except Exception:
             return None
 
@@ -85,11 +86,11 @@ class FileManager(object):
         with open(os.path.join(self.schemadir, sobject_name, 'query.soql'), 'r') as queryfile:
             return queryfile.read()
 
-    def save_sobject_fields(self, sobject_name, fields):
+    def save_sobject_fields(self, sobject_name, fields: SObjectFields):
         sobject_name = sobject_name.lower()
         os.makedirs(os.path.join(self.schemadir, sobject_name), exist_ok=True)
         with open(os.path.join(self.schemadir, sobject_name, '{}.json'.format(sobject_name)), 'w') as mapfile:
-            mapfile.write(json.dumps(fields, indent=4))
+            mapfile.write(json.dumps(fields.values_exportable(), indent=4))
 
     def save_sobject_map(self, sobject_name, fieldmap):
         sobject_name = sobject_name.lower()

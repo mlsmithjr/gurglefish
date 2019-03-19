@@ -1,33 +1,14 @@
+import argparse
+import logging.config
+import sys
 from typing import Dict
+
+import yaml
 
 import tools
 from schema import SFSchemaManager
 from sfexport import SFExporter
 from sfimport import SFImporter
-import argparse
-import logging.config
-import yaml
-
-from objects.files import LocalTableConfig
-
-
-def load_file_items(filename):
-    with open(filename, 'r') as f:
-        line_list = f.readlines()
-        stripped_list = [line.strip() for line in line_list if len(line) > 0]
-        return stripped_list
-
-
-def make_arg_list(args_list):
-    processed_args = []
-    for arg in args_list:
-        if len(arg) == 0:
-            continue
-        if arg.startswith('@'):
-            processed_args.extend(load_file_items(arg[1:]))
-        else:
-            processed_args.append(arg)
-    return processed_args
 
 
 def load_log_config():
@@ -55,7 +36,7 @@ if __name__ == '__main__':
 
     logconfig = load_log_config()
     logging.config.dictConfig(logconfig)
-    logger = logging.getLogger('simple')
+    logger = logging.getLogger('main')
 
     envname = args.env
 
@@ -66,38 +47,22 @@ if __name__ == '__main__':
     schema_mgr = SFSchemaManager(context)
 
     if args.init:
-        if context.filemgr.get_configured_tables() is not None:
-            print('Initialization halted, config.yml already exists. Please remove manually to start over')
-            exit(1)
-        sobject_list: [Dict] = schema_mgr.inspect()
-        sobjectconfig = []
-        for sobject in sobject_list:
-            sobjectconfig.append(LocalTableConfig({'name': sobject['name'].lower(), 'enabled': False}))
-        context.filemgr.save_configured_tables(sobjectconfig)
-        print('config created')
+        schema_mgr.initialize_config(envname)
+        sys.exit(0)
 
     if args.inspect:
         thelist: [Dict] = schema_mgr.inspect()
         for entry in thelist:
             logger.info(entry['name'])
+        sys.exit(0)
 
     if args.enable is not None:
-        table_config: [LocalTableConfig] = context.filemgr.get_configured_tables()
-        to_enable = [a.lower() for a in make_arg_list(args.enable)]
-        for entry in table_config:
-            if entry.name in to_enable:
-                print(f"enabling {entry.name}")
-                entry.enabled = True
-        context.filemgr.save_configured_tables(table_config)
+        schema_mgr.enable_table_sync(args.enable, True)
+        sys.exit(0)
 
     if args.disable is not None:
-        table_config: [LocalTableConfig] = context.filemgr.get_configured_tables()
-        to_disable = [a.tolower() for a in make_arg_list(args.disable)]
-        for entry in table_config:
-            if entry.name in to_disable:
-                print(f"disabling {entry.name}")
-                entry.enabled = False
-        context.filemgr.save_configured_tables(table_config)
+        schema_mgr.enable_table_sync(args.enable, False)
+        sys.exit(0)
 
     if args.sync is not None:
         exp = SFExporter(context)
@@ -105,20 +70,20 @@ if __name__ == '__main__':
 
     if args.schema is not None:
         if len(args.schema) > 0:
-            final_args = make_arg_list(args.schema)
+            final_args = tools.make_arg_list(args.schema)
             schema_mgr.prepare_sobjects(final_args)
         else:
             schema_mgr.prepare_configured_sobjects()
 
     if args.export is not None:
         exp = SFExporter(context)
-        table_list = make_arg_list(args.export)
+        table_list = tools.make_arg_list(args.export)
         for tablename in table_list:
             exp.export_copy_sql(tablename, schema_mgr, just_sample=args.sample)
 
     if args.load and len(args.load) > 0:
         imp = SFImporter(context, schema_mgr)
-        table_list = make_arg_list(args.load)
+        table_list = tools.make_arg_list(args.load)
         for tablename in table_list:
             logger.info('loading {}'.format(tablename))
             count = imp.bulk_load(tablename)

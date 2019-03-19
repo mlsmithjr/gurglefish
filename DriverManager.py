@@ -1,10 +1,10 @@
 import datetime
 import pkgutil
 from abc import ABCMeta, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from connections import ConnectionConfig
-from salesforce.sfapi import SFClient
+from salesforce.sfapi import SObjectFields
 
 
 class NewColumnDefinition(object):
@@ -15,6 +15,10 @@ class NewColumnDefinition(object):
         self.dml = dml
         self.db_field = db_field
         self.fieldtype = fieldtype
+
+    def as_dict(self) -> Dict:
+        return {'fieldlen': self.fieldlen, 'dml': self.dml, 'table_name': self.table_name,
+                'sobject_field': self.sobject_field, 'db_field': self.db_field, 'fieldtype': self.fieldtype}
 
 
 class GetDbTablesResult(object):
@@ -51,7 +55,15 @@ class DbDriverMeta(object):
         pass
 
     @abstractmethod
-    def make_create_table(self, sf: SFClient, sobject_name: str):
+    def make_create_table(self, fields: SObjectFields, sobject_name: str):
+        pass
+
+    @abstractmethod
+    def make_select_statement(self, field_names: [str], sobject_name: str) -> str:
+        pass
+
+    @abstractmethod
+    def exec_ddl(self, ddl: str):
         pass
 
     @abstractmethod
@@ -83,7 +95,7 @@ class DbDriverMeta(object):
         pass
 
     @abstractmethod
-    def bulk_load(self, tablename: str):
+    def import_native(self, tablename: str):
         pass
 
     @abstractmethod
@@ -100,6 +112,19 @@ class DbDriverMeta(object):
 
     @abstractmethod
     def clean_house(self, date_constraint: datetime):
+        pass
+
+    @abstractmethod
+    def alter_table_drop_columns(self, drop_field_names: [str], sobject_name: str):
+        pass
+
+    @abstractmethod
+    def alter_table_add_columns(self, new_field_defs, sobject_name: str) -> [str]:
+        pass
+
+    @abstractmethod
+    def export_native(self, sobject_name: str, ctx, just_sample=False,
+                      timestamp=None):
         pass
 
 

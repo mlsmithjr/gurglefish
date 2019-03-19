@@ -58,3 +58,22 @@ def sf_timestamp(t: datetime):
 
 def parse_timestamp(t):
     return datetime.datetime.strptime(t[0:19], '%Y-%m-%dT%H:%M:%S')
+
+
+def load_file_items(filename):
+    with open(filename, 'r') as f:
+        line_list = f.readlines()
+        stripped_list = [line.strip() for line in line_list if len(line) > 0]
+        return stripped_list
+
+
+def make_arg_list(args_list):
+    processed_args = []
+    for arg in args_list:
+        if len(arg) == 0:
+            continue
+        if arg.startswith('@'):
+            processed_args.extend(load_file_items(arg[1:]))
+        else:
+            processed_args.append(arg)
+    return processed_args

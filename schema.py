@@ -1,10 +1,12 @@
 import logging
 from typing import Dict
 
+import FileManager
 from DriverManager import DbDriverMeta
 from context import Context
 from objects.files import LocalTableConfig
-from salesforce.sfapi import SObjectFields
+from salesforce.sfapi import SObjectFields, SFClient
+from tools import make_arg_list
 
 __author__ = 'mark'
 
@@ -14,6 +16,7 @@ class SFSchemaManager:
     def __init__(self, context: Context):
         self.filters = context.filemgr.get_global_filters() + context.filemgr.get_filters()
         self.context = context
+        self.log = logging.getLogger("schema")
 
     @property
     def driver(self) -> DbDriverMeta:
@@ -90,25 +93,25 @@ class SFSchemaManager:
         self.sodict = dict([(so['name'], so) for so in solist])
         sobject_names = set([so['name'].lower() for so in solist])
         for new_sobject_name in sorted(sobject_names):
-            self._process_sobject(new_sobject_name)
+            self.create_table(new_sobject_name)
 
-    def create_table(self, sobject_name):
+    def create_table(self, sobject_name: str):
         new_sobject_name = sobject_name.lower()
 
-        fields = self.filemgr.get_sobject_fields(sobject_name)
+        fields: SObjectFields = self.filemgr.get_sobject_fields(sobject_name)
         if fields is None:
-            fields = self.sfclient.get_field_list(new_sobject_name)
+            fields: SObjectFields = self.sfclient.get_field_list(new_sobject_name)
             self.filemgr.save_sobject_fields(sobject_name, fields)
 
-        table_name, fieldmap, create_table_dml = self.driver.make_create_table(fields, new_sobject_name)
-        select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap],
+        table_name, fieldlist, create_table_dml = self.driver.make_create_table(fields, new_sobject_name)
+        select = self.driver.make_select_statement([field.sobject_field for field in fieldlist],
                                                    new_sobject_name)
 
-        parser = self.driver.make_transformer(new_sobject_name, table_name, fieldmap)
+        parser = self.driver.make_transformer(new_sobject_name, table_name, fieldlist)
 
         self.filemgr.save_sobject_fields(new_sobject_name, fields)
         self.filemgr.save_sobject_transformer(new_sobject_name, parser)
-        self.filemgr.save_sobject_map(new_sobject_name, fieldmap)
+        self.filemgr.save_sobject_map(new_sobject_name, [f.as_dict() for f in fieldlist])
         self.filemgr.save_table_create(new_sobject_name, create_table_dml + ';\n\n')
         self.filemgr.save_sobject_query(new_sobject_name, select)
 
@@ -119,29 +122,14 @@ class SFSchemaManager:
         try:
             if not self.driver.table_exists(sobject_name):
                 self.log.info(f'  creating {sobject_name}')
-                self.driver.exec_dml(create_table_dml)
+                self.driver.exec_ddl(create_table_dml)
                 self.log.info(f'  creating indexes')
                 self.driver.maintain_indexes(sobject_name, fields)
         except Exception as ex:
             print(ex)
+            raise ex
 
-    def _process_sobject(self, sobject_name):
-        new_sobject_name = sobject_name.lower()
-
-        fields = self.sfclient.get_field_list(new_sobject_name)
-        table_name, fieldmap, create_table_dml = self.driver.make_create_table(fields, new_sobject_name)
-        select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap],
-                                                   new_sobject_name)
-
-        parser = self.driver.make_transformer(new_sobject_name, table_name, fieldmap)
-
-        self.filemgr.save_sobject_fields(new_sobject_name, fields)
-        self.filemgr.save_sobject_transformer(new_sobject_name, parser)
-        self.filemgr.save_sobject_map(new_sobject_name, fieldmap)
-        self.filemgr.save_table_create(new_sobject_name, create_table_dml + ';\n\n')
-        self.filemgr.save_sobject_query(new_sobject_name, select)
-
-    def update_sobject(self, sobject_name: str, allow_add=True, allow_drop=True):
+    def update_sobject_definition(self, sobject_name: str, allow_add=True, allow_drop=True):
         sobject_name = sobject_name.lower()
 
         sobj_columns: SObjectFields = self.sfclient.get_field_list(sobject_name)
@@ -199,3 +187,23 @@ class SFSchemaManager:
             self.filemgr.save_sobject_fields(sobject_name, [f for f in sobj_columns.values()])
 
         return True
+
+    def initialize_config(self, envname: str):
+        if self.filemgr.get_configured_tables() is not None:
+            self.log.error('Initialization halted, config.json already exists. Please remove manually to start over')
+            exit(1)
+        sobject_list: [Dict] = self.inspect()
+        sobjectconfig = []
+        for sobject in sobject_list:
+            sobjectconfig.append(LocalTableConfig({'name': sobject['name'].lower(), 'enabled': False}))
+        self.filemgr.save_configured_tables(sobjectconfig)
+        self.log.info(f'Initial configuration created for {envname}')
+
+    def enable_table_sync(self, table_names: [str], flag: bool):
+        table_config: [LocalTableConfig] = self.filemgr.get_configured_tables()
+        to_enable = [a.lower() for a in make_arg_list(table_names)]
+        for entry in table_config:
+            if entry.name in to_enable:
+                self.log.info(f"Setting {entry.name} sync to {flag}")
+                entry.enabled = flag
+        self.filemgr.save_configured_tables(table_config)

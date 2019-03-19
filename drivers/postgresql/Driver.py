@@ -1,32 +1,35 @@
+import datetime
+import gzip
 import json
 import logging
-import subprocess
+import operator
 import os
 import string
+import subprocess
+import sys
 from typing import List, Dict
-import datetime
-
-from fastcache import lru_cache
 
 import psycopg2
 import psycopg2.extras
+from fastcache import lru_cache
 
 import config
 import tools
 from DriverManager import DbDriverMeta, GetDbTablesResult, NewColumnDefinition
 from connections import ConnectionConfig
+from context import Context
+from salesforce.sfapi import SObjectFields, SObjectField
 
 
 class Driver(DbDriverMeta):
-    schema_name = None
-    log = logging.getLogger('dbdriver')
-
-    driver_type = "postgresql"
 
     def __init__(self):
+        self.driver_type = "postgresql"
         self.dbenv = None
         self.db = None
         self.storagedir = None
+        self.log = logging.getLogger('dbdriver')
+        self.schema_name = None
 
     def connect(self, dbenv: ConnectionConfig):
         self.dbenv = dbenv
@@ -45,9 +48,9 @@ class Driver(DbDriverMeta):
             self.log.fatal(ex)
             raise ex
 
-    def exec_dml(self, dml):
+    def exec_ddl(self, ddl: str):
         cur = self.db.cursor()
-        cur.execute(dml)
+        cur.execute(ddl)
         self.db.commit()
         cur.close()
 
@@ -72,7 +75,7 @@ class Driver(DbDriverMeta):
         return self.db.cursor()
 
     def verify_db_setup(self):
-        self.exec_dml(f'CREATE SCHEMA IF NOT EXISTS {self.schema_name}')
+        self.exec_ddl(f'CREATE SCHEMA IF NOT EXISTS {self.schema_name}')
         if not self.table_exists('gf_mdata_sync_stats'):
             ddl = f'create table {self.schema_name}.gf_mdata_sync_stats (' + \
                   '  id         serial primary key, ' + \
@@ -83,7 +86,7 @@ class Driver(DbDriverMeta):
                   '  sync_start timestamp not null default now(), ' + \
                   '  sync_end   timestamp not null default now(), ' + \
                   '  sync_since timestamp not null)'
-            self.exec_dml(ddl)
+            self.exec_ddl(ddl)
         if not self.table_exists('gf_mdata_schema_chg'):
             ddl = f'create table {self.schema_name}.gf_mdata_schema_chg (' + \
                   '  id         serial primary key, ' + \
@@ -91,14 +94,14 @@ class Driver(DbDriverMeta):
                   '  col_name   text not null, ' + \
                   '  operation  text not null, ' + \
                   '  date_added timestamp not null default now())'
-            self.exec_dml(ddl)
+            self.exec_ddl(ddl)
         if not self.table_exists('gf_mdata_sync_jobs'):
             ddl = f'create table {self.schema_name}.gf_mdata_sync_jobs (' + \
                   '  id         serial primary key, ' + \
                   '  date_start timestamp not null default now(),' + \
                   '  date_finish timestamp)'
-            self.exec_dml(ddl)
-            self.exec_dml(f'alter table {self.schema_name}.gf_mdata_sync_stats add constraint ' +
+            self.exec_ddl(ddl)
+            self.exec_ddl(f'alter table {self.schema_name}.gf_mdata_sync_stats add constraint ' +
                           'gf_mdata_sync_stats_job_fk foreign key (jobid) references ' +
                           f'{self.schema_name}.gf_mdata_sync_jobs(id) on delete cascade')
 
@@ -141,7 +144,7 @@ class Driver(DbDriverMeta):
         self.db.commit()
         cur.close()
 
-    def bulk_load(self, tablename):
+    def import_native(self, tablename):
         tablename = tablename.lower()
         if not os.path.isfile('/usr/bin/psql'):
             raise Exception('/usr/bin/psql not found. Please install postgresql client to use bulk loading')
@@ -288,7 +291,7 @@ class Driver(DbDriverMeta):
         col_cursor.close()
         return cols
 
-    def _make_column(self, sobject_name: str, field: Dict) -> [NewColumnDefinition]:
+    def _make_column(self, sobject_name: str, field: SObjectField) -> [NewColumnDefinition]:
         """
             returns:
                 list(dict(
@@ -300,9 +303,9 @@ class Driver(DbDriverMeta):
         #        if field is None: return None,None
 
         sql = ''
-        fieldname = field['name']
-        fieldtype = field['type']
-        fieldlen = field['length']
+        fieldname = field.name
+        fieldtype = field.get_type
+        fieldlen = field.length
         if fieldtype in ('picklist', 'multipicklist', 'email', 'phone', 'url'):
             sql += 'varchar ({0}) '.format(fieldlen)
         elif fieldtype in ('string', 'encryptedstring', 'textarea', 'combobox'):
@@ -315,14 +318,13 @@ class Driver(DbDriverMeta):
             sql += 'time '
         elif fieldtype == 'id':
             sql += 'char(15) primary key '
-            # fieldname = 'sfid'
         elif fieldtype == 'reference':
             sql += 'char(15) '
         elif fieldtype == 'boolean':
             sql += 'boolean '
         elif fieldtype == 'double':
-            sql += 'numeric ({0},{1}) '.format(field['precision'], field['scale'])
-            fieldlen = field['precision'] + field['scale'] + 1
+            sql += 'numeric ({0},{1}) '.format(field.precision, field.scale)
+            fieldlen = field.precision + field.scale + 1
         elif fieldtype == 'currency':
             sql += 'numeric (18,2) '
         elif fieldtype == 'int':
@@ -339,7 +341,7 @@ class Driver(DbDriverMeta):
             self.log.error(f'field {fieldname} unknown type {fieldtype} for sobject {sobject_name}')
             raise Exception('field {0} unknown type {1} for sobject {2}'.format(fieldname, fieldtype, sobject_name))
 
-        new_list = [NewColumnDefinition(fieldlen, sql, sobject_name, field['name'], fieldname, fieldtype)]
+        new_list = [NewColumnDefinition(fieldlen, sql, sobject_name, field.name, fieldname, fieldtype)]
         return new_list
 
     def alter_table_add_columns(self, new_field_defs, sobject_name: str) -> [str]:
@@ -380,24 +382,28 @@ class Driver(DbDriverMeta):
         self.db.commit()
         cur.close()
 
-    def maintain_indexes(self, sobject_name, field_defs):
+    def maintain_indexes(self, sobject_name, field_defs: SObjectFields):
         ddl_template = "CREATE INDEX IF NOT EXISTS {}_{} ON {} ({})"
         cur = self.db.cursor()
-        for field in field_defs:
-            if field['externalId'] or field['idLookup']:
-                if field['name'].lower() != 'id':  # Id is already set as the pkey
-                    ddl = ddl_template.format(sobject_name, field['name'], self.fq_table(sobject_name), field['name'])
+        for field in field_defs.values():
+            if field.is_externalid or field.is_idlookup:
+                if field.name != 'id':  # Id is already set as the pkey
+                    ddl = ddl_template.format(sobject_name, field.name, self.fq_table(sobject_name), field.name)
                     cur.execute(ddl)
         self.db.commit()
         cur.close()
 
-    def make_create_table(self, fields: Dict, sobject_name: str):
-        sobject_name = sobject_name.lower()
-        print('new sobject: ' + sobject_name)
-        tablecols = []
-        fieldlist = []
+    def make_select_statement(self, field_names: [str], sobject_name: str) -> str:
+        select = 'select ' + ','.join(field_names) + ' from ' + sobject_name
+        return select
 
-        for field in fields:
+    def make_create_table(self, fields: SObjectFields, sobject_name: str) -> (str, [NewColumnDefinition], str):
+        sobject_name = sobject_name.lower()
+        self.log.info('new sobject: ' + sobject_name)
+        tablecols = []
+        fieldlist: [NewColumnDefinition] = []
+
+        for field in fields.values():
             m: [NewColumnDefinition] = self._make_column(sobject_name, field)
             if len(m) == 0:
                 continue
@@ -414,18 +420,18 @@ class Driver(DbDriverMeta):
         col_cursor.close()
         return stamp
 
-    def make_transformer(self, sobject_name, table_name, fieldlist):
+    def make_transformer(self, sobject_name, table_name, fieldlist: [NewColumnDefinition]):
         parser = 'from transformutils import id, bl, db, dt, st, ts, inte\n\n'
         parser += 'def parse(rec):\n' + \
                   '  result = dict()\n\n'
         #                  '  def push(name, value):\n' + \
         #                  '    result[name] = value\n\n'
 
-        for fieldmap in fieldlist:
-            fieldtype = fieldmap['fieldtype']
-            fieldname = fieldmap['sobject_field']
-            fieldlen = fieldmap['fieldlen']
-            dbfield = fieldmap['db_field']
+        for field in fieldlist:
+            fieldtype = field.fieldtype
+            fieldname = field.sobject_field
+            fieldlen = field.fieldlen
+            dbfield = field.db_field
             p_parser = ''
             if fieldtype in (
                     'picklist', 'multipicklist', 'string', 'textarea', 'email', 'phone', 'url', 'encryptedstring'):
@@ -455,8 +461,9 @@ class Driver(DbDriverMeta):
             elif fieldtype in ('base64', 'anyType'):  # not implemented yet <<<<<<
                 return None
             elif fieldtype == 'address':
-                p_parser = 'result["{}"] = stsub(rec, "{}", "{}", fieldlen={})\n'.format(dbfield, fieldname,
-                                                                                         fieldmap['subfield'], fieldlen)
+                # p_parser = 'result["{}"] = stsub(rec, "{}", "{}", fieldlen={})\n'.format(dbfield, fieldname,
+                #                                                                         field['subfield'], fieldlen)
+                pass
 
             parser += '  ' + p_parser
         parser += '  return result'
@@ -497,3 +504,43 @@ class Driver(DbDriverMeta):
             else:
                 parts.append('\\N')
         return bytes('\t'.join(parts) + '\n', 'utf-8')
+
+    def export_native(self, sobject_name: str, ctx: Context, just_sample=False,
+                      timestamp=None):
+
+        sobject_name = sobject_name.lower()
+
+        xlate_handler = ctx.filemgr.load_translate_handler(sobject_name)
+
+        fieldlist = ctx.filemgr.get_sobject_map(sobject_name)
+        fieldmap = dict((f['db_field'].lower(), f) for f in fieldlist)
+
+        tablefields = self.get_table_fields(sobject_name)
+        tablefields = sorted(tablefields.values(), key=operator.itemgetter('ordinal_position'))
+        soqlfields = [fm['sobject_field'] for fm in fieldmap.values()]
+
+        soql = 'select {} from {}'.format(','.join(soqlfields), sobject_name)
+        if timestamp is not None:
+            soql += ' where SystemModStamp > {0}'.format(tools.sf_timestamp(timestamp))
+        if just_sample:
+            self.log.info('sampling 500 records max')
+            soql += ' limit 500'
+        counter = 0
+        total_size = ctx.sfclient.record_count(sobject_name)
+        if sys.stdout.isatty():
+            print('{}: exporting {} records: 0%'.format(sobject_name, total_size), end='\r', flush=True)
+        else:
+            print(f'{sobject_name}: exporting {total_size} records')
+        with gzip.open(os.path.join(self.storagedir, sobject_name + '.exp.gz'), 'wb', compresslevel=5) as export:
+            for rec in ctx.sfclient.query(soql):
+                trec = xlate_handler.parse(rec)
+                record = self.format_for_export(trec, tablefields, fieldmap)
+                export.write(record)
+                counter += 1
+                if counter % 2000 == 0 and sys.stdout.isatty():
+                    print('{}: exporting {} records: {:.0f}%\r'.format(sobject_name, total_size,
+                                                                       (counter / total_size) * 100), end='\r',
+                          flush=True)
+            export.close()
+            if sys.stdout.isatty():
+                print("\nexported {} records{}".format(counter, ' ' * 10))

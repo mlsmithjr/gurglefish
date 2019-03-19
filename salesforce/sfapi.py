@@ -43,6 +43,14 @@ class SObjectField(object):
         return self.field['length']
 
     @property
+    def precision(self) -> int:
+        return self.field['precision']
+
+    @property
+    def scale(self) -> int:
+        return self.field['scale']
+
+    @property
     def references(self) -> [str]:
         return self.field.get('referenceTo', [])
 
@@ -58,6 +66,14 @@ class SObjectField(object):
     def is_unique(self) -> bool:
         return self.field['unique']
 
+    @property
+    def is_externalid(self) -> bool:
+        return self.field['externalId']
+
+    @property
+    def is_idlookup(self) -> bool:
+        return self.field['idLookup']
+
 
 class SObjectFields(object):
     def __init__(self, fields: [Dict]):
@@ -72,14 +88,20 @@ class SObjectFields(object):
     def names(self) -> Set:
         return set(self.fields.keys())
 
-    def values(self) -> [Dict]:
+    def values(self) -> [SObjectField]:
         return self.fields.values()
+
+    def values_exportable(self) -> [Dict]:
+        result = list()
+        for f in self.fields.values():
+            result.append(f.field)
+        return result
 
 
 class SFClient:
 
     def __init__(self):
-        self.logger = logging.getLogger('salesforce')
+        self.log = logging.getLogger('salesforce')
         self.access_token = None
         self.service_url = None
         self.client = None
@@ -93,13 +115,13 @@ class SFClient:
                    'client_id': consumer_key,
                    'client_secret': consumer_secret
                    }
-        # self.logger.debug('url=%s, payload=%s' % (server_url, payload))
+        self.log.debug('url=%s, payload=%s' % (server_url, payload))
         rsp = requests.post(server_url + '/services/oauth2/token', data=payload,
                             headers={'content-type': 'application/x-www-form-urlencoded'})
         payload = json.loads(rsp.text)
         if 'error' in payload:
             raise Exception(payload['error_description'])
-        self.logger.debug('payload=%s' % (rsp.text,))
+        self.log.debug('payload=%s' % (rsp.text,))
         self.construct(payload['access_token'], payload['instance_url'])
 
     def construct(self, token, server_url):
@@ -138,7 +160,7 @@ class SFClient:
 
     def _invoke_get(self, url, url_params):
         fullurl = f'{self.service_url}/services/data/v{_API_VERSION}/{url}'
-        # self.logger.debug('get %s', fullurl)
+        self.log.debug('get %s', fullurl)
         response = self.client.get(fullurl, params=url_params)
         result_payload = response.text
         response.raise_for_status()
@@ -150,23 +172,23 @@ class SFClient:
         if filter:
             soql += ' where ' + query_filter
         fullurl = f'{self.service_url}/services/data/v{_API_VERSION}/query/'
-        # self.logger.debug('get %s', fullurl)
+        self.log.debug('get %s', fullurl)
         response = self.client.get(fullurl, params={'q': soql})
         result_payload = response.json()
         if response.status_code != 200:
-            self.logger.error(f'query error {response.status_code}, {response.reason}')
-            self.logger.error(result_payload)
+            self.log.error(f'query error {response.status_code}, {response.reason}')
+            self.log.error(result_payload)
             return
         return result_payload['totalSize']
 
     def query(self, soql: str):
         fullurl = f'{self.service_url}/services/data/v{_API_VERSION}/query/'
-        # self.logger.debug('get %s', fullurl)
+        self.log.debug('get %s', fullurl)
         response = self.client.get(fullurl, params={'q': soql})
         result_payload = response.text
         if response.status_code != 200:
-            self.logger.error(f'query error {response.status_code}, {response.reason}')
-            self.logger.error(result_payload)
+            self.log.error(f'query error {response.status_code}, {response.reason}')
+            self.log.error(result_payload)
             return
         data = json.loads(result_payload)
         recs = data['records']

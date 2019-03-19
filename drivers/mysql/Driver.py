@@ -96,7 +96,7 @@ class Driver(DbDriverMeta):
         self.db_commit()
         cur.close()
 
-    def bulk_load(self, tablename):
+    def import_native(self, tablename):
         tablename = tablename.lower()
         if not os.path.isfile('/usr/bin/mysql'):
             raise Exception('/usr/bin/mysql not found. Please install MySQL/MariaDB client to use bulk loading')
