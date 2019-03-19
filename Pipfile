@@ -9,6 +9,7 @@ requests = "*"
 pyyaml = "*"
 arrow = "*"
 fastcache = "*"
+psycopg2-binary = "*"
 psycopg2 = "*"
 
 [dev-packages]
