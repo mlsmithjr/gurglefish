@@ -11,7 +11,7 @@ import mysql.connector
 import config
 import tools
 from DriverManager import DbDriverMeta, GetDbTablesResult
-from connections import ConnectionConfig
+from objects.connections import ConnectionConfig
 
 
 #

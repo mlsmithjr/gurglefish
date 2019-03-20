@@ -25,13 +25,13 @@ def bl(rec, name, fieldlen):
 
 def dt(rec, name, fieldlen):
     if name in rec and rec[name] is not None:
-        return pyDate(rec[name])
+        return py_date(rec[name])
     return None
 
 
 def ts(rec, name, fieldlen):
     if name in rec and rec[name] is not None:
-        return pyTimestamp(rec[name])
+        return py_timestamp(rec[name])
     return None
 
 
@@ -63,11 +63,11 @@ def stsub(rec, name, subname, fieldlen=0):
     return None
 
 
-def pyTimestamp(t) -> datetime:
+def py_timestamp(t) -> datetime:
     return datetime.strptime(t[0:19], '%Y-%m-%dT%H:%M:%S')
 
 
-def pyDate(d) -> datetime:
+def py_date(d) -> datetime:
     return datetime.strptime(d, '%Y-%m-%d').date()
 
 
@@ -75,6 +75,4 @@ def scrub(s):
     if '\\t' in s or '\0' in s:
         s = s.replace('\\t', ' ')
         s = s.replace('\0', '')
-    #    if '\0' in s:
-    #        s = ''.join([c for c in s if c != '\0'])
     return s

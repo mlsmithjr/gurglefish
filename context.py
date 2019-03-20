@@ -1,8 +1,8 @@
 import config
 from DriverManager import DbDriverMeta
 from FileManager import FileManager
-from connections import ConnectionConfig
-from salesforce.sfapi import SFClient
+from objects.connections import ConnectionConfig
+from sfapi import SFClient
 
 
 class Context:

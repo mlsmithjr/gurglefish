@@ -15,10 +15,10 @@ from fastcache import lru_cache
 
 import config
 import tools
-from DriverManager import DbDriverMeta, GetDbTablesResult, NewColumnDefinition
-from connections import ConnectionConfig
+from DriverManager import DbDriverMeta, GetDbTablesResult
+from objects.connections import ConnectionConfig
 from context import Context
-from salesforce.sfapi import SObjectFields, SObjectField
+from objects.sobject import SObjectField, SObjectFields, ColumnMap
 
 
 class Driver(DbDriverMeta):
@@ -291,7 +291,7 @@ class Driver(DbDriverMeta):
         col_cursor.close()
         return cols
 
-    def _make_column(self, sobject_name: str, field: SObjectField) -> [NewColumnDefinition]:
+    def _make_column(self, sobject_name: str, field: SObjectField) -> [ColumnMap]:
         """
             returns:
                 list(dict(
@@ -341,15 +341,15 @@ class Driver(DbDriverMeta):
             self.log.error(f'field {fieldname} unknown type {fieldtype} for sobject {sobject_name}')
             raise Exception('field {0} unknown type {1} for sobject {2}'.format(fieldname, fieldtype, sobject_name))
 
-        new_list = [NewColumnDefinition(fieldlen, sql, sobject_name, field.name, fieldname, fieldtype)]
+        new_list = [ColumnMap.from_parts(fieldlen, sql, sobject_name, field.name, fieldname, fieldtype)]
         return new_list
 
-    def alter_table_add_columns(self, new_field_defs, sobject_name: str) -> [str]:
+    def alter_table_add_columns(self, new_field_defs, sobject_name: str) -> [ColumnMap]:
         ddl_template = "ALTER TABLE {} ADD COLUMN {} {}"
         cur = self.db.cursor()
         newcols = []
         for field in new_field_defs:
-            col_def: [NewColumnDefinition] = self._make_column(sobject_name, field)
+            col_def: [ColumnMap] = self._make_column(sobject_name, field)
             if len(col_def) == 0:
                 continue
             col = col_def[0]
@@ -397,14 +397,14 @@ class Driver(DbDriverMeta):
         select = 'select ' + ','.join(field_names) + ' from ' + sobject_name
         return select
 
-    def make_create_table(self, fields: SObjectFields, sobject_name: str) -> (str, [NewColumnDefinition], str):
+    def make_create_table(self, fields: SObjectFields, sobject_name: str) -> (str, [ColumnMap], str):
         sobject_name = sobject_name.lower()
         self.log.info('new sobject: ' + sobject_name)
         tablecols = []
-        fieldlist: [NewColumnDefinition] = []
+        fieldlist: [ColumnMap] = []
 
         for field in fields.values():
-            m: [NewColumnDefinition] = self._make_column(sobject_name, field)
+            m: [ColumnMap] = self._make_column(sobject_name, field)
             if len(m) == 0:
                 continue
             for column in m:
@@ -420,7 +420,7 @@ class Driver(DbDriverMeta):
         col_cursor.close()
         return stamp
 
-    def make_transformer(self, sobject_name, table_name, fieldlist: [NewColumnDefinition]):
+    def make_transformer(self, sobject_name, table_name, fieldlist: [ColumnMap]):
         parser = 'from transformutils import id, bl, db, dt, st, ts, inte\n\n'
         parser += 'def parse(rec):\n' + \
                   '  result = dict()\n\n'
@@ -428,36 +428,28 @@ class Driver(DbDriverMeta):
         #                  '    result[name] = value\n\n'
 
         for field in fieldlist:
-            fieldtype = field.fieldtype
+            fieldtype = field.field_type
             fieldname = field.sobject_field
             fieldlen = field.fieldlen
             dbfield = field.db_field
             p_parser = ''
-            if fieldtype in (
-                    'picklist', 'multipicklist', 'string', 'textarea', 'email', 'phone', 'url', 'encryptedstring'):
-                p_parser = 'result["{}"] = st(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
-            elif fieldtype == 'combobox':
-                p_parser = 'result["{}"] = st(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
+            if fieldtype in ('picklist', 'multipicklist', 'string', 'textarea', 'email', 'phone',
+                             'url', 'encryptedstring', 'combobox'):
+                p_parser = f'result["{dbfield}"] = st(rec, "{fieldname}", fieldlen={fieldlen})\n'
             elif fieldtype == 'datetime':
-                p_parser = 'result["{}"] = ts(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = f'result["{dbfield}"] = ts(rec, "{fieldname}", fieldlen={fieldlen})\n'
             elif fieldtype == 'date':
-                p_parser = 'result["{}"] = dt(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = f'result["{dbfield}"] = dt(rec, "{fieldname}", fieldlen={fieldlen})\n'
             elif fieldtype == 'time':
-                p_parser = 'result["{}"] = tm(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
-            elif fieldtype == 'id':
-                p_parser = 'result["{}"] = id(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
-            elif fieldtype == 'reference':
-                p_parser = 'result["{}"] = id(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = f'result["{dbfield}"] = tm(rec, "{fieldname}", fieldlen={fieldlen})\n'
+            elif fieldtype in ('id', 'reference'):
+                p_parser = f'result["{dbfield}"] = id(rec, "{fieldname}", fieldlen={fieldlen})\n'
             elif fieldtype == 'boolean':
-                p_parser = 'result["{}"] = bl(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
-            elif fieldtype == 'double':
-                p_parser = 'result["{}"] = db(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
-            elif fieldtype == 'currency':
-                p_parser = 'result["{}"] = db(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = f'result["{dbfield}"] = bl(rec, "{fieldname}", fieldlen={fieldlen})\n'
+            elif fieldtype in ('double', 'currency', 'percent'):
+                p_parser = f'result["{dbfield}"] = db(rec, "{fieldname}", fieldlen={fieldlen})\n'
             elif fieldtype == 'int':
-                p_parser = 'result["{}"] = inte(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
-            elif fieldtype == 'percent':
-                p_parser = 'result["{}"] = db(rec, "{}", fieldlen={})\n'.format(dbfield, fieldname, fieldlen)
+                p_parser = f'result["{dbfield}"] = inte(rec, "{fieldname}", fieldlen={fieldlen})\n'
             elif fieldtype in ('base64', 'anyType'):  # not implemented yet <<<<<<
                 return None
             elif fieldtype == 'address':
@@ -482,12 +474,12 @@ class Driver(DbDriverMeta):
             val = val.replace('\t', '\\t')
         return val
 
-    def format_for_export(self, trec, tablefields, fieldmap):
+    def format_for_export(self, trec: Dict, tablefields: [Dict], fieldmap: Dict[str, ColumnMap]):
         parts = []
         for tf in tablefields:
             n = tf['column_name']
             f = fieldmap[n]
-            soqlf = f['sobject_field']
+            soqlf = f.sobject_field
             if soqlf in trec:
                 val = trec[soqlf]
                 if val is None:
@@ -512,12 +504,12 @@ class Driver(DbDriverMeta):
 
         xlate_handler = ctx.filemgr.load_translate_handler(sobject_name)
 
-        fieldlist = ctx.filemgr.get_sobject_map(sobject_name)
-        fieldmap = dict((f['db_field'].lower(), f) for f in fieldlist)
+        fieldlist: [ColumnMap] = ctx.filemgr.get_sobject_map(sobject_name)
+        fieldmap = dict((f.db_field.lower(), f) for f in fieldlist)
 
-        tablefields = self.get_table_fields(sobject_name)
-        tablefields = sorted(tablefields.values(), key=operator.itemgetter('ordinal_position'))
-        soqlfields = [fm['sobject_field'] for fm in fieldmap.values()]
+        tablefields: Dict = self.get_table_fields(sobject_name)
+        tablefields: Dict = sorted(tablefields.values(), key=operator.itemgetter('ordinal_position'))
+        soqlfields = [fm.sobject_field for fm in fieldmap.values()]
 
         soql = 'select {} from {}'.format(','.join(soqlfields), sobject_name)
         if timestamp is not None:
@@ -533,7 +525,7 @@ class Driver(DbDriverMeta):
             print(f'{sobject_name}: exporting {total_size} records')
         with gzip.open(os.path.join(self.storagedir, sobject_name + '.exp.gz'), 'wb', compresslevel=5) as export:
             for rec in ctx.sfclient.query(soql):
-                trec = xlate_handler.parse(rec)
+                trec: Dict = xlate_handler.parse(rec)
                 record = self.format_for_export(trec, tablefields, fieldmap)
                 export.write(record)
                 counter += 1

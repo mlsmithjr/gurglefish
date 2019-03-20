@@ -5,7 +5,8 @@ import FileManager
 from DriverManager import DbDriverMeta
 from context import Context
 from objects.files import LocalTableConfig
-from salesforce.sfapi import SObjectFields, SFClient
+from objects.sobject import ColumnMap
+from sfapi import SObjectFields, SFClient
 from tools import make_arg_list
 
 __author__ = 'mark'
@@ -111,7 +112,7 @@ class SFSchemaManager:
 
         self.filemgr.save_sobject_fields(new_sobject_name, fields)
         self.filemgr.save_sobject_transformer(new_sobject_name, parser)
-        self.filemgr.save_sobject_map(new_sobject_name, [f.as_dict() for f in fieldlist])
+        self.filemgr.save_sobject_map(new_sobject_name, fieldlist)
         self.filemgr.save_table_create(new_sobject_name, create_table_dml + ';\n\n')
         self.filemgr.save_sobject_query(new_sobject_name, select)
 
@@ -139,21 +140,21 @@ class SFSchemaManager:
         # check for added/dropped columns
         #
         table_field_names = set([tbl['column_name'] for tbl in table_columns])
-        new_fields = sobj_columns.names() - table_field_names
+        new_field_names = sobj_columns.names() - table_field_names
         dropped_fields = table_field_names - sobj_columns.names()
 
-        if len(new_fields) > 0:
+        if len(new_field_names) > 0:
             if not allow_add:
                 self.log.warning(f'  new column found for {sobject_name}, auto-create disabled, skipping')
             else:
                 self.log.info(f'  new columns found, updating table and indexes')
-                new_field_defs = [sobj_columns.find(f) for f in new_fields]
-                newfieldmap = self.driver.alter_table_add_columns(new_field_defs, sobject_name)
-                if len(newfieldmap) > 0:
+                new_field_defs = [sobj_columns.find(f) for f in new_field_names]
+                newfields: [ColumnMap] = self.driver.alter_table_add_columns(new_field_defs, sobject_name)
+                if len(newfields) > 0:
                     self.driver.maintain_indexes(sobject_name, new_field_defs)
 
-                    fieldmap = self.filemgr.get_sobject_map(sobject_name)
-                    fieldmap.extend(newfieldmap)
+                    fieldmap: [ColumnMap] = self.filemgr.get_sobject_map(sobject_name)
+                    fieldmap.extend(newfields)
                     self.filemgr.save_sobject_map(sobject_name, fieldmap)
                     select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap],
                                                                sobject_name)
@@ -168,10 +169,10 @@ class SFSchemaManager:
                 self.log.warning(f'  dropped column detected for {sobject_name}, auto-drop disabled, skipping')
                 # do not allow sync until field(s) allowed to be dropped
                 return False
-            fieldmap = self.filemgr.get_sobject_map(sobject_name)
-            newlist = list()
+            fieldmap: [ColumnMap] = self.filemgr.get_sobject_map(sobject_name)
+            newlist: [ColumnMap] = list()
             for item in fieldmap:
-                if item['sobject_field'] in dropped_fields:
+                if item.sobject_field in dropped_fields:
                     pass
                 else:
                     newlist.append(item)
@@ -179,7 +180,7 @@ class SFSchemaManager:
             self.log.info(f'  dropped column(s) detected')
             self.driver.alter_table_drop_columns(dropped_fields, sobject_name)
             self.filemgr.save_sobject_map(sobject_name, fieldmap)
-            select = self.driver.make_select_statement([field['sobject_field'] for field in fieldmap], sobject_name)
+            select = self.driver.make_select_statement([field.sobject_field for field in fieldmap], sobject_name)
             self.filemgr.save_sobject_query(sobject_name, select)
             parser = self.driver.make_transformer(sobject_name, sobject_name, fieldmap)
             self.filemgr.save_sobject_transformer(sobject_name, parser)

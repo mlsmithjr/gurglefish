@@ -1,10 +1,12 @@
 import datetime
 from typing import Optional
 
+import yaml
+
 import DriverManager
 from context import Context
-from connections import Connections
-from salesforce.sfapi import SFClient
+from objects.connections import Connections
+from sfapi import SFClient
 import logging
 
 _log = logging.getLogger('main')
@@ -77,3 +79,9 @@ def make_arg_list(args_list):
         else:
             processed_args.append(arg)
     return processed_args
+
+
+def load_log_config():
+    with open('logging.yml', 'r') as configfile:
+        _logconfig = yaml.load(configfile.read(), Loader=yaml.FullLoader)
+        return _logconfig

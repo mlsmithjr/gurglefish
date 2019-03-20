@@ -1,101 +1,15 @@
 import logging
 import json
 import operator
-from typing import Dict, Set, Optional
+from typing import Dict
 
 import requests
 from fastcache import lru_cache
 
+from objects.sobject import SObjectFields
+
 MAX_BATCH_SIZE = 100
 _API_VERSION = '40.0'
-
-
-class SFError(Exception):
-    def __init__(self, value):
-        self.value = value
-
-    def __str__(self):
-        return repr(self.value)
-
-
-class SObjectField(object):
-    def __init__(self, field: Dict):
-        self.field = field
-
-    @property
-    def name(self) -> str:
-        return self.field['name']
-
-    @property
-    def is_custom(self) -> bool:
-        return self.field['custom']
-
-    @property
-    def digits(self) -> int:
-        return self.field['digits']
-
-    @property
-    def label(self) -> str:
-        return self.field['label']
-
-    @property
-    def length(self) -> int:
-        return self.field['length']
-
-    @property
-    def precision(self) -> int:
-        return self.field['precision']
-
-    @property
-    def scale(self) -> int:
-        return self.field['scale']
-
-    @property
-    def references(self) -> [str]:
-        return self.field.get('referenceTo', [])
-
-    @property
-    def relationship_name(self) -> str:
-        return self.field.get('relationshipName', None)
-
-    @property
-    def get_type(self):
-        return self.field['type']
-
-    @property
-    def is_unique(self) -> bool:
-        return self.field['unique']
-
-    @property
-    def is_externalid(self) -> bool:
-        return self.field['externalId']
-
-    @property
-    def is_idlookup(self) -> bool:
-        return self.field['idLookup']
-
-
-class SObjectFields(object):
-    def __init__(self, fields: [Dict]):
-        self.fields = dict()
-        for field in fields:
-            name = field['name']
-            self.fields[name.lower()] = SObjectField(field)
-
-    def find(self, name: str) -> Optional[SObjectField]:
-        return self.fields.get(name.lower(), None)
-
-    def names(self) -> Set:
-        return set(self.fields.keys())
-
-    def values(self) -> [SObjectField]:
-        return self.fields.values()
-
-    def values_exportable(self) -> [Dict]:
-        result = list()
-        for f in self.fields.values():
-            result.append(f.field)
-        return result
 
 
 class SFClient:
@@ -152,21 +66,6 @@ class SFClient:
         fieldlist.sort(key=operator.itemgetter('name'))
         return SObjectFields(fieldlist)
 
-    def fetch_record(self, objectname: str, recid: str, fieldlist: [str]) -> Dict:
-        fieldstring = ','.join(fieldlist)
-        url = 'sobjects/{0}/{1}'.format(objectname, recid)
-        result = self._invoke_get(url, {'fields': fieldstring})
-        return result
-
-    def _invoke_get(self, url, url_params):
-        fullurl = f'{self.service_url}/services/data/v{_API_VERSION}/{url}'
-        self.log.debug('get %s', fullurl)
-        response = self.client.get(fullurl, params=url_params)
-        result_payload = response.text
-        response.raise_for_status()
-        data = json.loads(result_payload)
-        return data
-
     def record_count(self, sobject: str, query_filter: str = None):
         soql = 'select count() from ' + sobject
         if filter:
@@ -209,3 +108,12 @@ class SFClient:
                     yield (rec)
             else:
                 break
+
+    def _invoke_get(self, url, url_params):
+        fullurl = f'{self.service_url}/services/data/v{_API_VERSION}/{url}'
+        self.log.debug('get %s', fullurl)
+        response = self.client.get(fullurl, params=url_params)
+        result_payload = response.text
+        response.raise_for_status()
+        data = json.loads(result_payload)
+        return data

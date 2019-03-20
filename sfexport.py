@@ -1,9 +1,7 @@
-import gzip
+
 import json
 import logging
-import operator
 import os
-import sys
 import datetime
 
 import arrow
@@ -17,21 +15,26 @@ __author__ = 'mark'
 
 
 class SFExporter:
-    logger = logging.getLogger('main')
-
     def __init__(self, context: Context):
         self.context = context
         self.storagedir = context.filemgr.exportdir
         os.makedirs(self.storagedir, exist_ok=True)
+        self.log = logging.getLogger('main')
 
     def sync_tables(self, schema_mgr: SFSchemaManager):
         table_config: [LocalTableConfig] = self.context.filemgr.get_configured_tables()
+        if table_config is None:
+            self.log.error('No configuration found - Use --init to create and then edit')
+            return
         tablelist: [LocalTableConfig] = [table for table in table_config if table.enabled]
+        if len(tablelist) == 0:
+            self.log.warning('No tables enabled for sync')
+            return
         jobid = self.context.dbdriver.start_sync_job()
         try:
             for table in tablelist:
                 tablename = table.name.lower()
-                print(f'sync {tablename}')
+                self.log.info(f'sync {tablename}')
                 if not self.context.dbdriver.table_exists(tablename):
                     schema_mgr.create_table(tablename)
                 else:
@@ -101,6 +104,6 @@ class SFExporter:
     def export_copy_sql(self, sobject_name, schema_mgr: SFSchemaManager, just_sample=False, timestamp=None):
 
         sobject_name = sobject_name.lower()
-        if not self.table_exists(sobject_name):
+        if not self.context.driver.table_exists(sobject_name):
             schema_mgr.create_table(sobject_name)
         self.context.driver.export_native(sobject_name, just_sample, timestamp)

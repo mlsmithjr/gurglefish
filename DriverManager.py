@@ -1,24 +1,11 @@
 import datetime
 import pkgutil
 from abc import ABCMeta, abstractmethod
-from typing import List, Optional, Dict
+from typing import List, Optional
 
-from connections import ConnectionConfig
-from salesforce.sfapi import SObjectFields
-
-
-class NewColumnDefinition(object):
-    def __init__(self, fieldlen: int, dml: str, table_name: str, sobject_field: str, db_field: str, fieldtype: str):
-        self.fieldlen = fieldlen
-        self.table_name = table_name
-        self.sobject_field = sobject_field
-        self.dml = dml
-        self.db_field = db_field
-        self.fieldtype = fieldtype
-
-    def as_dict(self) -> Dict:
-        return {'fieldlen': self.fieldlen, 'dml': self.dml, 'table_name': self.table_name,
-                'sobject_field': self.sobject_field, 'db_field': self.db_field, 'fieldtype': self.fieldtype}
+from objects.connections import ConnectionConfig
+from objects.sobject import ColumnMap
+from sfapi import SObjectFields
 
 
 class GetDbTablesResult(object):
@@ -119,7 +106,7 @@ class DbDriverMeta(object):
         pass
 
     @abstractmethod
-    def alter_table_add_columns(self, new_field_defs, sobject_name: str) -> [str]:
+    def alter_table_add_columns(self, new_field_defs, sobject_name: str) -> [ColumnMap]:
         pass
 
     @abstractmethod

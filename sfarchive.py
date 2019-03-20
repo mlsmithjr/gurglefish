@@ -3,18 +3,10 @@ import logging.config
 import sys
 from typing import Dict
 
-import yaml
-
 import tools
 from schema import SFSchemaManager
 from sfexport import SFExporter
 from sfimport import SFImporter
-
-
-def load_log_config():
-    with open('logging.yml', 'r') as configfile:
-        _logconfig = yaml.load(configfile.read(), Loader=yaml.FullLoader)
-        return _logconfig
 
 
 if __name__ == '__main__':
@@ -34,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument("--disable", help="enable one or more tables to sync", nargs="+", metavar="sobject|@file")
     args = parser.parse_args()
 
-    logconfig = load_log_config()
+    logconfig = tools.load_log_config()
     logging.config.dictConfig(logconfig)
     logger = logging.getLogger('main')
 

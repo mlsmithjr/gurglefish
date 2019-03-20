@@ -1,10 +1,11 @@
 import gzip
 import json
 import os
-from typing import Dict, Optional
+from typing import Optional
 
 from objects.files import LocalTableConfig
-from salesforce.sfapi import SObjectFields
+from objects.sobject import ColumnMap
+from sfapi import SObjectFields
 
 
 class FileManager(object):
@@ -58,6 +59,12 @@ class FileManager(object):
         except Exception:
             return None
 
+    def save_sobject_fields(self, sobject_name: str, fields: SObjectFields):
+        sobject_name = sobject_name.lower()
+        os.makedirs(os.path.join(self.schemadir, sobject_name), exist_ok=True)
+        with open(os.path.join(self.schemadir, sobject_name, '{}.json'.format(sobject_name)), 'w') as mapfile:
+            mapfile.write(json.dumps(fields.values_exportable(), indent=4))
+
     def get_configured_tables(self) -> [LocalTableConfig]:
         try:
             with open(os.path.join(self.basedir, 'db', self.envname, 'config.json'), 'r') as configfile:
@@ -76,42 +83,36 @@ class FileManager(object):
         with open(os.path.join(self.basedir, 'db', self.envname, 'config.json'), 'w') as configfile:
             configfile.write(json.dumps(config, indent=4))
 
-    def get_sobject_map(self, sobject_name):
+    def get_sobject_map(self, sobject_name: str) -> [ColumnMap]:
         sobject_name = sobject_name.lower()
         with open(os.path.join(self.schemadir, sobject_name, '{}_map.json'.format(sobject_name)), 'r') as mapfile:
-            return json.load(mapfile)
+            return [ColumnMap(f) for f in json.load(mapfile)]
 
-    def get_sobject_query(self, sobject_name):
+    def save_sobject_map(self, sobject_name: str, fieldmap: [ColumnMap]):
+        sobject_name = sobject_name.lower()
+        os.makedirs(os.path.join(self.schemadir, sobject_name), exist_ok=True)
+        with open(os.path.join(self.schemadir, sobject_name, '{}_map.json'.format(sobject_name)), 'w') as mapfile:
+            mapfile.write(json.dumps([f.as_dict() for f in fieldmap], indent=4))
+
+    def get_sobject_query(self, sobject_name: str):
         sobject_name = sobject_name.lower()
         with open(os.path.join(self.schemadir, sobject_name, 'query.soql'), 'r') as queryfile:
             return queryfile.read()
 
-    def save_sobject_fields(self, sobject_name, fields: SObjectFields):
-        sobject_name = sobject_name.lower()
-        os.makedirs(os.path.join(self.schemadir, sobject_name), exist_ok=True)
-        with open(os.path.join(self.schemadir, sobject_name, '{}.json'.format(sobject_name)), 'w') as mapfile:
-            mapfile.write(json.dumps(fields.values_exportable(), indent=4))
-
-    def save_sobject_map(self, sobject_name, fieldmap):
-        sobject_name = sobject_name.lower()
-        os.makedirs(os.path.join(self.schemadir, sobject_name), exist_ok=True)
-        with open(os.path.join(self.schemadir, sobject_name, '{}_map.json'.format(sobject_name)), 'w') as mapfile:
-            mapfile.write(json.dumps(fieldmap, indent=4))
-
-    def save_table_create(self, sobject_name, sql):
+    def save_table_create(self, sobject_name: str, sql: str):
         sobject_name = sobject_name.lower()
         os.makedirs(os.path.join(self.schemadir, sobject_name), exist_ok=True)
         with open(os.path.join(self.schemadir, sobject_name, '{}.sql'.format(sobject_name)), 'w') as schemafile:
             schemafile.write(sql)
 
-    def save_sobject_transformer(self, sobject_name, xformr):
+    def save_sobject_transformer(self, sobject_name: str, xformr: str):
         sobject_name = sobject_name.lower()
         os.makedirs(os.path.join(self.schemadir, sobject_name), exist_ok=True)
         with open(os.path.join(self.schemadir, sobject_name, '{}_Transform.py'.format(sobject_name)),
                   'w') as parserfile:
             parserfile.write(xformr)
 
-    def save_sobject_query(self, sobject_name, soql):
+    def save_sobject_query(self, sobject_name: str, soql: str):
         sobject_name = sobject_name.lower()
         os.makedirs(os.path.join(self.schemadir, sobject_name), exist_ok=True)
         with open(os.path.join(self.schemadir, sobject_name, 'query.soql'), 'w') as queryfile:
