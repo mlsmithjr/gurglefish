@@ -7,20 +7,21 @@ from sfapi import SFClient
 
 class Context:
 
-    def __init__(self, env: ConnectionConfig, dbdriver: DbDriverMeta, sfclient: SFClient):
+    def __init__(self, envname: str, env: ConnectionConfig, dbdriver: DbDriverMeta, sfclient: SFClient):
         self.env = env
+        self.envname = envname
         self.driver = dbdriver
         self.sfapi = sfclient
         self.filemgr = FileManager(config.storagedir, self.env.id)
 
     @property
-    def config_env(self):
+    def config_env(self) -> ConnectionConfig:
         return self.env
 
     @property
-    def dbdriver(self):
+    def dbdriver(self) -> DbDriverMeta:
         return self.driver
 
     @property
-    def sfclient(self):
+    def sfclient(self) -> SFClient:
         return self.sfapi

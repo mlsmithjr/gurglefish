@@ -1,4 +1,4 @@
-import json
+
 from typing import Optional
 
 __author__ = 'mark'
@@ -20,7 +20,7 @@ class ConnectionConfig(object):
         return ConnectionConfig(d)
 
     def to_json(self):
-        return dict([(k,v) for k,v in self.fields.items()])
+        return dict([(k, v) for k, v in self.fields.items()])
 
     @property
     def id(self):
@@ -129,6 +129,10 @@ class ConnectionConfig(object):
     def dbport(self, value):
         self.fields['dbport'] = value
 
+    @property
+    def threads(self) -> int:
+        return min(self.fields.get('threads', 1), 4)
+
 
 class Connections(object):
     def __init__(self, dbpath=None):
@@ -156,4 +160,3 @@ class Connections(object):
             if e.id == envname:
                 return e
         return None
-

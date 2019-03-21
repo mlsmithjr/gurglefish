@@ -5,7 +5,7 @@ import yaml
 
 import DriverManager
 from context import Context
-from objects.connections import Connections
+from objects.connections import Connections, ConnectionConfig
 from sfapi import SFClient
 import logging
 
@@ -14,7 +14,7 @@ _log = logging.getLogger('main')
 
 def setup_env(envname) -> Optional[Context]:
     mde = Connections()
-    env = mde.get_db_env(envname)
+    env: ConnectionConfig = mde.get_db_env(envname)
     if env is None:
         _log.error(f'Configuration for {envname} not found')
         exit(1)
@@ -26,10 +26,19 @@ def setup_env(envname) -> Optional[Context]:
         _log.error(f'Unable to connect to {env.authurl} as {env.login}: {str(ex)}')
         return None
 
-    dbdriver = DriverManager.Manager().get_driver('postgresql')
-    if not dbdriver.connect(env):
-        return None
-    return Context(env, dbdriver, sf)
+    return Context(envname, env, get_db_connection(envname), sf)
+
+
+def get_db_connection(envname: str) -> DriverManager.DbDriverMeta:
+    mde = Connections()
+    env: ConnectionConfig = mde.get_db_env(envname)
+    if env is None:
+        _log.error(f'Configuration for {envname} not found')
+        exit(1)
+
+    driver = DriverManager.Manager().get_driver(env.dbvendor)
+    driver.connect(env)
+    return driver
 
 
 def json_serial(obj):

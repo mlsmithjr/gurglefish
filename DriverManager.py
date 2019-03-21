@@ -78,7 +78,7 @@ class DbDriverMeta(object):
         pass
 
     @abstractmethod
-    def upsert(self, cur, table_name: str, trec: dict):
+    def upsert(self, cur, table_name: str, trec: dict, journal=None):
         pass
 
     @abstractmethod
@@ -112,6 +112,22 @@ class DbDriverMeta(object):
     @abstractmethod
     def export_native(self, sobject_name: str, ctx, just_sample=False,
                       timestamp=None):
+        pass
+
+    @abstractmethod
+    def cursor(self):
+        pass
+
+    @abstractmethod
+    def close(self):
+        pass
+
+    @abstractmethod
+    def commit(self):
+        pass
+
+    @abstractmethod
+    def rollback(self):
         pass
 
 

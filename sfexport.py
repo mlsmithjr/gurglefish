@@ -3,15 +3,97 @@ import json
 import logging
 import os
 import datetime
+from multiprocessing import Lock
+from queue import Queue
+from threading import Thread
 
 import arrow
 
+import FileManager
 import tools
 from context import Context
 from schema import SFSchemaManager
 from objects.files import LocalTableConfig
+from sfapi import SFClient
 
 __author__ = 'mark'
+
+
+class JobThread(Thread):
+    def __init__(self, queue: Queue, env_name: str, filemgr: FileManager, sfclient: SFClient, db_lock: Lock):
+        super().__init__(daemon=True)
+        self.queue = queue
+        self.filemgr = filemgr
+        self.sfclient = sfclient
+        self.env_name = env_name
+        self.db_lock: Lock = db_lock
+
+    def run(self):
+        db = None
+        log = logging.getLogger(self.name)
+        try:
+            db = tools.get_db_connection(self.env_name)
+            while not self.queue.empty():
+                job = self.queue.get()
+                jobid = job['jobid']
+                soql = job['soql']
+                sobject_name = job['sobject_name']
+                timestamp = job['timestamp']
+
+                sobject_name = sobject_name.lower()
+                log.info(f'start sync {sobject_name}')
+
+                xlate_handler = self.filemgr.load_translate_handler(sobject_name)
+                if timestamp is not None:
+                    soql += " where SystemModStamp > {}".format(tools.sf_timestamp(timestamp))
+                    soql += " order by SystemModStamp ASC"
+                cur = db.cursor
+                counter = 0
+                journal = self.filemgr.create_journal(sobject_name)
+                try:
+                    sync_start = datetime.datetime.now()
+                    inserted = 0
+                    updated = 0
+                    for rec in self.sfclient.query(soql):
+                        del rec['attributes']
+                        trec = xlate_handler.parse(rec)
+
+                        try:
+                            self.db_lock.acquire()
+                            i, u = db.upsert(cur, sobject_name, trec, journal)
+                            if i:
+                                inserted += 1
+                            if u:
+                                updated += 1
+                        except Exception as ex:
+                            # with open('/tmp/debug.json', 'w') as x:
+                            #     x.write(json.dumps(trec, indent=4, default=tools.json_serial))
+                            raise ex
+                        finally:
+                            self.db_lock.release()
+
+                        if i or u:
+                            counter += 1
+                            if counter % 1000 == 0:
+                                log.info(f'{sobject_name} processed {counter}')
+                            if counter % 1000 == 0:
+                                db.commit()
+                    db.commit()
+                    log.info(f'end sync {sobject_name}: {inserted} inserts, {updated} updates')
+                    if counter > 0:
+                        db.insert_sync_stats(jobid, sobject_name, sync_start, datetime.datetime.now(), timestamp,
+                                                   inserted,
+                                                   updated)
+                except Exception as ex:
+                    db.rollback()
+                    raise ex
+                finally:
+                    self.queue.task_done()
+                    cur.close()
+                    journal.close()
+        finally:
+            db.close()
+            return
 
 
 class SFExporter:
@@ -31,10 +113,11 @@ class SFExporter:
             self.log.warning('No tables enabled for sync')
             return
         jobid = self.context.dbdriver.start_sync_job()
+        queue: Queue = Queue()
+        shared_lock: Lock = Lock()
         try:
             for table in tablelist:
                 tablename = table.name.lower()
-                self.log.info(f'sync {tablename}')
                 if not self.context.dbdriver.table_exists(tablename):
                     schema_mgr.create_table(tablename)
                 else:
@@ -46,7 +129,22 @@ class SFExporter:
                         return
 
                 tstamp = self.context.dbdriver.max_timestamp(tablename)
-                self.etl(jobid, self.context.filemgr.get_sobject_query(tablename), tablename, timestamp=tstamp)
+                soql = self.context.filemgr.get_sobject_query(tablename)
+                queue.put({'jobid': jobid, 'soql': soql, 'sobject_name': tablename, 'timestamp': tstamp})
+                # self.etl(jobid, soql, tablename, timestamp=tstamp)
+
+            pool: [JobThread] = list()
+            for i in range(1, 4):
+                job = JobThread(queue, self.context.envname, self.context.filemgr, self.context.sfclient, shared_lock)
+                job.start()
+                pool.append(job)
+            for t in pool:
+                self.log.debug(f'Waiting on thread {t.name}')
+                t.join()
+            if not queue.empty():
+                self.log.warning('All threads finished before queue was drained')
+            # queue.join()
+
         finally:
             self.context.dbdriver.finish_sync_job(jobid)
             self.context.dbdriver.clean_house(arrow.now().shift(months=-2).datetime)
@@ -56,6 +154,7 @@ class SFExporter:
         sobject_name = sobject_name.lower()
         dbdriver = self.context.dbdriver
 
+        self.log.info(f'sync {sobject_name}')
         xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
         if timestamp is not None:
             soql += " where SystemModStamp > {}".format(tools.sf_timestamp(timestamp))

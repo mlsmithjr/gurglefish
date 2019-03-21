@@ -9,7 +9,7 @@ from fastcache import lru_cache
 from objects.sobject import SObjectFields
 
 MAX_BATCH_SIZE = 100
-_API_VERSION = '40.0'
+_API_VERSION = '44.0'
 
 
 class SFClient:

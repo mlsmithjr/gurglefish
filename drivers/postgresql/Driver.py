@@ -12,6 +12,7 @@ from typing import List, Dict
 import psycopg2
 import psycopg2.extras
 from fastcache import lru_cache
+from psycopg2._psycopg import connection, cursor
 
 import config
 import tools
@@ -26,7 +27,7 @@ class Driver(DbDriverMeta):
     def __init__(self):
         self.driver_type = "postgresql"
         self.dbenv = None
-        self.db = None
+        self.db: connection = None
         self.storagedir = None
         self.log = logging.getLogger('dbdriver')
         self.schema_name = None
@@ -35,7 +36,7 @@ class Driver(DbDriverMeta):
         self.dbenv = dbenv
         dbport = dbenv.dbport if dbenv.dbport is not None and len(dbenv.dbport) > 2 else '5432'
         try:
-            self.db = psycopg2.connect(
+            self.db: connection = psycopg2.connect(
                 "dbname='{0}' user='{1}' password='{2}' host='{3}' port='{4}'".format(dbenv.dbname, dbenv.dbuser,
                                                                                       dbenv.dbpass, dbenv.dbhost,
                                                                                       dbport))
@@ -71,8 +72,11 @@ class Driver(DbDriverMeta):
         return self.db.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     @property
-    def cursor(self):
+    def cursor(self) -> cursor:
         return self.db.cursor()
+
+    def close(self):
+        self.db.close()
 
     def verify_db_setup(self):
         self.exec_ddl(f'CREATE SCHEMA IF NOT EXISTS {self.schema_name}')
@@ -111,6 +115,7 @@ class Driver(DbDriverMeta):
                     (datetime.datetime.now(),))
         rowid = cur.fetchone()[0]
         cur.close()
+        self.db.commit()
         return rowid
 
     def finish_sync_job(self, jobid):
@@ -336,6 +341,7 @@ class Driver(DbDriverMeta):
         elif fieldtype in ('base64', 'anyType'):  # not implemented yet <<<<<<
             return []
         elif fieldtype == 'address':
+            # nothing to handle, this is just an aggregation of fields already exposed for syncing
             return []
         else:
             self.log.error(f'field {fieldname} unknown type {fieldtype} for sobject {sobject_name}')
@@ -349,6 +355,8 @@ class Driver(DbDriverMeta):
         cur = self.db.cursor()
         newcols = []
         for field in new_field_defs:
+            if field.get_type == 'address':
+                continue
             col_def: [ColumnMap] = self._make_column(sobject_name, field)
             if len(col_def) == 0:
                 continue
@@ -394,7 +402,7 @@ class Driver(DbDriverMeta):
         cur.close()
 
     def make_select_statement(self, field_names: [str], sobject_name: str) -> str:
-        select = 'select ' + ','.join(field_names) + ' from ' + sobject_name
+        select = 'select ' + ',\n'.join(field_names) + ' from ' + sobject_name
         return select
 
     def make_create_table(self, fields: SObjectFields, sobject_name: str) -> (str, [ColumnMap], str):
