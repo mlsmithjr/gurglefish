@@ -131,7 +131,7 @@ class ConnectionConfig(object):
 
     @property
     def threads(self) -> int:
-        return min(self.fields.get('threads', 1), 4)
+        return min(int(self.fields.get('threads', '1')), 4)
 
 
 class Connections(object):

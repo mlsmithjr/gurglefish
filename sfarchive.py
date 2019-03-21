@@ -70,8 +70,7 @@ if __name__ == '__main__':
     if args.export is not None:
         exp = SFExporter(context)
         table_list = tools.make_arg_list(args.export)
-        for tablename in table_list:
-            exp.export_copy_sql(tablename, schema_mgr, just_sample=args.sample)
+        exp.export_tables(table_list, schema_mgr, just_sample=args.sample)
 
     if args.load and len(args.load) > 0:
         imp = SFImporter(context, schema_mgr)

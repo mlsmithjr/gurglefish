@@ -1,4 +1,3 @@
-
 import json
 import logging
 import os
@@ -19,7 +18,38 @@ from sfapi import SFClient
 __author__ = 'mark'
 
 
-class JobThread(Thread):
+class ExportThread(Thread):
+    def __init__(self, queue: Queue, env_name: str, ctx: Context, db_lock: Lock):
+        super().__init__(daemon=True)
+        self.queue = queue
+        self.ctx = ctx
+        self.env_name = env_name
+        self.db_lock: Lock = db_lock
+
+    def run(self):
+        db = None
+        log = logging.getLogger(self.name)
+        try:
+            db = tools.get_db_connection(self.env_name)
+            while not self.queue.empty():
+                job = self.queue.get()
+                try:
+                    table_name = job['table_name']
+                    schema_mgr = job['schema_mgr']
+                    just_sample = job['just_sample']
+
+                    if not db.table_exists(table_name):
+                        schema_mgr.create_table(table_name)
+
+                    log.info(f'Exporting {table_name}')
+                    db.export_native(table_name, self.ctx, just_sample)
+                finally:
+                    self.queue.task_done()
+        finally:
+            db.close()
+
+
+class SyncThread(Thread):
     def __init__(self, queue: Queue, env_name: str, filemgr: FileManager, sfclient: SFClient, db_lock: Lock):
         super().__init__(daemon=True)
         self.queue = queue
@@ -82,8 +112,8 @@ class JobThread(Thread):
                     log.info(f'end sync {sobject_name}: {inserted} inserts, {updated} updates')
                     if counter > 0:
                         db.insert_sync_stats(jobid, sobject_name, sync_start, datetime.datetime.now(), timestamp,
-                                                   inserted,
-                                                   updated)
+                                             inserted,
+                                             updated)
                 except Exception as ex:
                     db.rollback()
                     raise ex
@@ -116,6 +146,7 @@ class SFExporter:
         queue: Queue = Queue()
         shared_lock: Lock = Lock()
         try:
+            self.log.info('Building table sync queue')
             for table in tablelist:
                 tablename = table.name.lower()
                 if not self.context.dbdriver.table_exists(tablename):
@@ -133,9 +164,10 @@ class SFExporter:
                 queue.put({'jobid': jobid, 'soql': soql, 'sobject_name': tablename, 'timestamp': tstamp})
                 # self.etl(jobid, soql, tablename, timestamp=tstamp)
 
-            pool: [JobThread] = list()
-            for i in range(1, 4):
-                job = JobThread(queue, self.context.envname, self.context.filemgr, self.context.sfclient, shared_lock)
+            self.log.info(f'Allocating {self.context.env.threads} thread(s)')
+            pool: [SyncThread] = list()
+            for i in range(0, self.context.env.threads):
+                job = SyncThread(queue, self.context.envname, self.context.filemgr, self.context.sfclient, shared_lock)
                 job.start()
                 pool.append(job)
             for t in pool:
@@ -206,3 +238,22 @@ class SFExporter:
         if not self.context.driver.table_exists(sobject_name):
             schema_mgr.create_table(sobject_name)
         self.context.driver.export_native(sobject_name, just_sample, timestamp)
+
+    def export_tables(self, table_list: [str], schema_mgr: SFSchemaManager, just_sample=False):
+        queue: Queue = Queue()
+        shared_lock: Lock = Lock()
+        for tablename in table_list:
+            tablename = tablename.lower()
+            queue.put({'table_name': tablename, 'just_sample': just_sample})
+
+        self.log.info(f'Allocating {self.context.env.threads} thread(s)')
+        pool: [SyncThread] = list()
+        for i in range(0, self.context.env.threads):
+            job = ExportThread(queue, self.context.envname, self.context, shared_lock)
+            job.start()
+            pool.append(job)
+        for t in pool:
+            self.log.debug(f'Waiting on thread {t.name}')
+            t.join()
+        if not queue.empty():
+            self.log.warning('All threads finished before queue was drained')
