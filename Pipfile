@@ -4,13 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-flask-socketio = "*"
 requests = "*"
 pyyaml = "*"
 arrow = "*"
 fastcache = "*"
 psycopg2-binary = "*"
-psycopg2 = "*"
 
 [dev-packages]
 

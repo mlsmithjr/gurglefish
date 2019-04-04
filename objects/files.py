@@ -38,3 +38,6 @@ class LocalTableConfig(object):
     def package_name(self):
         return self.item.get('package', None)
 
+    @property
+    def use_bulkapi(self) -> bool:
+        return self.item.get('bulkapi', False)

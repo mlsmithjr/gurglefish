@@ -14,12 +14,96 @@ import psycopg2.extras
 from fastcache import lru_cache
 from psycopg2._psycopg import connection, cursor
 
+import FileManager
 import config
 import tools
-from DriverManager import DbDriverMeta, GetDbTablesResult
+from DriverManager import DbDriverMeta, GetDbTablesResult, DbNativeExporter
 from objects.connections import ConnectionConfig
 from context import Context
 from objects.sobject import SObjectField, SObjectFields, ColumnMap
+
+
+class NativeExporter(DbNativeExporter):
+
+    def __init__(self, sobject: str, db: DbDriverMeta, filemgr: FileManager, just_sample=False, timestamp=None):
+        self.sobject_name = sobject.lower()
+        self.dbdriver = db
+        self.query = None
+        self.export_file = None
+        self.tablefields = None
+        self.xlate_handler = filemgr.load_translate_handler(self.sobject_name)
+        self.log = logging.getLogger('exporter')
+
+        fieldlist: [ColumnMap] = filemgr.get_sobject_map(self.sobject_name)
+        self.fieldmap = dict((f.db_field.lower(), f) for f in fieldlist)
+
+        self.tablefields: Dict = self.dbdriver.get_table_fields(self.sobject_name)
+        self.tablefields: Dict = sorted(self.tablefields.values(), key=operator.itemgetter('ordinal_position'))
+        soqlfields = [fm.sobject_field for fm in self.fieldmap.values()]
+
+        self.query = 'select {} from {}'.format(','.join(soqlfields), self.sobject_name)
+        if timestamp is not None:
+            self.query += ' where SystemModStamp > {0}'.format(tools.sf_timestamp(timestamp))
+        if just_sample:
+            self.log.info('sampling 500 records max')
+            self.query += ' limit 500'
+        self.counter = 0
+        self.export_file = gzip.open(os.path.join(filemgr.exportdir, self.sobject_name + '.exp.gz'), 'wb', compresslevel=5)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if self.export_file is not None:
+            self.export_file.close()
+            self.export_file = None
+
+    def soql(self) -> str:
+        return self.query
+
+    def write(self, rec: Dict):
+        transformed: Dict = self.xlate_handler.parse(rec)
+        record = NativeExporter.format_for_export(transformed, self.tablefields, self.fieldmap)
+        self.export_file.write(record)
+        self.counter += 1
+
+    @staticmethod
+    def format_for_export(trec: Dict, tablefields: [Dict], fieldmap: Dict[str, ColumnMap]):
+        parts = []
+        for tf in tablefields:
+            n = tf['column_name']
+            f = fieldmap[n]
+            soqlf = f.sobject_field
+            if soqlf in trec:
+                val = trec[soqlf]
+                if val is None:
+                    parts.append('\\N')
+                else:
+                    if isinstance(val, bool):
+                        parts.append('True' if val else 'False')
+                    elif isinstance(val, datetime.datetime):
+                        parts.append(val.isoformat())
+                    elif isinstance(val, str):
+                        parts.append(NativeExporter._escape(val))
+                    else:
+                        parts.append(str(val))
+            else:
+                parts.append('\\N')
+        return bytes('\t'.join(parts) + '\n', 'utf-8')
+
+    @staticmethod
+    def _escape(val):
+        if '\\' in val or '\n' in val or '\r' in val or '\t' in val:
+            val = val.replace('\\', '\\\\')
+            val = val.replace('\n', '\\n')
+            val = val.replace('\r', '\\r')
+            val = val.replace('\t', '\\t')
+        return val
+
+    def close(self):
+        self.export_file.close()
+        if sys.stdout.isatty():
+            print("\nexported {} records{}".format(self.counter, ' ' * 10))
 
 
 class Driver(DbDriverMeta):
@@ -87,6 +171,8 @@ class Driver(DbDriverMeta):
                   '  table_name text not null, ' + \
                   '  inserts    numeric(8) not null, ' + \
                   '  updates    numeric(8) not null, ' + \
+                  '  deletes    numeric(8) not null, ' + \
+                  '  api_calls  numeric(8) not null, ' + \
                   '  sync_start timestamp not null default now(), ' + \
                   '  sync_end   timestamp not null default now(), ' + \
                   '  sync_since timestamp not null)'
@@ -124,15 +210,15 @@ class Driver(DbDriverMeta):
                     (datetime.datetime.now(), jobid))
         cur.close()
 
-    def insert_sync_stats(self, jobid, table_name, sync_start, sync_end, sync_since, inserts, updates):
+    def insert_sync_stats(self, jobid, table_name, sync_start, sync_end, sync_since, inserts, updates, deletes, api_calls):
         cur = self.cursor
         if sync_since is None:
             sync_since = datetime.datetime(1970, 1, 1, 0, 0, 0)
         dml = f'insert into {self.schema_name}.gf_mdata_sync_stats ' + \
-              '(jobid, table_name, inserts, updates, sync_start, ' + \
-              'sync_end, sync_since) values (%s,%s,%s,%s,%s,%s,%s)'
+              '(jobid, table_name, inserts, updates, deletes, sync_start, ' + \
+              'sync_end, sync_since, api_calls) values (%s,%s,%s,%s,%s,%s,%s,%s,%s)'
 
-        cur.execute(dml, (jobid, table_name, inserts, updates, sync_start, sync_end, sync_since))
+        cur.execute(dml, (jobid, table_name, inserts, updates, deletes, sync_start, sync_end, sync_since, api_calls))
         self.db.commit()
 
     def clean_house(self, date_constraint: datetime):
@@ -165,6 +251,13 @@ class Driver(DbDriverMeta):
         except Exception as ex:
             self.log.fatal(ex)
         return 0
+
+    def delete(self, cur, table_name: str, key: str):
+        table_name = self.fq_table(table_name)
+        try:
+            cur.execute(f'delete from {table_name} where Id=%s', [key])
+        except Exception as ex:
+            self.log.error(f'Deleting record {key} from {table_name}')
 
     def upsert(self, cur, table_name, trec: dict, journal=None):
         assert ('Id' in trec)
@@ -379,7 +472,7 @@ class Driver(DbDriverMeta):
         ddl_template = 'ALTER TABLE {} DROP COLUMN {}'
         cur = self.db.cursor()
         for field in drop_field_names:
-            print('    dropping column {} from {}'.format(field, sobject_name))
+            self.log.info('  dropping column {} from {}'.format(field, sobject_name))
             ddl = ddl_template.format(self.fq_table(sobject_name), field)
             cur.execute(ddl)
 
@@ -394,10 +487,11 @@ class Driver(DbDriverMeta):
         ddl_template = "CREATE INDEX IF NOT EXISTS {}_{} ON {} ({})"
         cur = self.db.cursor()
         for field in field_defs.values():
-            if field.is_externalid or field.is_idlookup:
+            if field.is_externalid or field.is_idlookup or field.name == 'SystemModStamp':
                 if field.name != 'id':  # Id is already set as the pkey
                     ddl = ddl_template.format(sobject_name, field.name, self.fq_table(sobject_name), field.name)
                     cur.execute(ddl)
+                    self.log.info(f'  created index {sobject_name}_{field.name}')
         self.db.commit()
         cur.close()
 
@@ -423,7 +517,7 @@ class Driver(DbDriverMeta):
 
     def max_timestamp(self, tablename: str):
         col_cursor = self.db.cursor()
-        col_cursor.execute('select max(lastmodifieddate) from ' + self.fq_table(tablename))
+        col_cursor.execute('select max(SystemModStamp) from ' + self.fq_table(tablename))
         stamp, = col_cursor.fetchone()
         col_cursor.close()
         return stamp
@@ -505,42 +599,6 @@ class Driver(DbDriverMeta):
                 parts.append('\\N')
         return bytes('\t'.join(parts) + '\n', 'utf-8')
 
-    def export_native(self, sobject_name: str, ctx: Context, just_sample=False,
-                      timestamp=None):
-
-        sobject_name = sobject_name.lower()
-
-        xlate_handler = ctx.filemgr.load_translate_handler(sobject_name)
-
-        fieldlist: [ColumnMap] = ctx.filemgr.get_sobject_map(sobject_name)
-        fieldmap = dict((f.db_field.lower(), f) for f in fieldlist)
-
-        tablefields: Dict = self.get_table_fields(sobject_name)
-        tablefields: Dict = sorted(tablefields.values(), key=operator.itemgetter('ordinal_position'))
-        soqlfields = [fm.sobject_field for fm in fieldmap.values()]
-
-        soql = 'select {} from {}'.format(','.join(soqlfields), sobject_name)
-        if timestamp is not None:
-            soql += ' where SystemModStamp > {0}'.format(tools.sf_timestamp(timestamp))
-        if just_sample:
-            self.log.info('sampling 500 records max')
-            soql += ' limit 500'
-        counter = 0
-        total_size = ctx.sfclient.record_count(sobject_name)
-        if sys.stdout.isatty():
-            print('{}: exporting {} records: 0%'.format(sobject_name, total_size), end='\r', flush=True)
-        else:
-            print(f'{sobject_name}: exporting {total_size} records')
-        with gzip.open(os.path.join(self.storagedir, sobject_name + '.exp.gz'), 'wb', compresslevel=5) as export:
-            for rec in ctx.sfclient.query(soql):
-                trec: Dict = xlate_handler.parse(rec)
-                record = self.format_for_export(trec, tablefields, fieldmap)
-                export.write(record)
-                counter += 1
-                if counter % 2000 == 0 and sys.stdout.isatty():
-                    print('{}: exporting {} records: {:.0f}%\r'.format(sobject_name, total_size,
-                                                                       (counter / total_size) * 100), end='\r',
-                          flush=True)
-            export.close()
-            if sys.stdout.isatty():
-                print("\nexported {} records{}".format(counter, ' ' * 10))
+    def create_exporter(self, sobject_name: str, ctx: Context, just_sample=False, timestamp=None) -> DbNativeExporter:
+        exporter = NativeExporter(sobject_name, self, ctx.filemgr, just_sample, timestamp)
+        return exporter

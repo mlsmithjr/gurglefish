@@ -26,16 +26,12 @@ if __name__ == '__main__':
     parser.add_argument("--disable", help="enable one or more tables to sync", nargs="+", metavar="sobject|@file")
     args = parser.parse_args()
 
-    logconfig = tools.load_log_config()
-    logging.config.dictConfig(logconfig)
-    logger = logging.getLogger('main')
-
     envname = args.env
 
     context = tools.setup_env(envname)
     if context is None:
         exit(1)
-
+    logger = logging.getLogger('main')
     schema_mgr = SFSchemaManager(context)
 
     if args.init:
@@ -70,7 +66,7 @@ if __name__ == '__main__':
     if args.export is not None:
         exp = SFExporter(context)
         table_list = tools.make_arg_list(args.export)
-        exp.export_tables(table_list, schema_mgr, just_sample=args.sample)
+        exp.export_tables(table_list, just_sample=args.sample)
 
     if args.load and len(args.load) > 0:
         imp = SFImporter(context, schema_mgr)

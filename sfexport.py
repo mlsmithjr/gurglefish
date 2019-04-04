@@ -2,128 +2,199 @@ import json
 import logging
 import os
 import datetime
-from multiprocessing import Lock
-from queue import Queue
-from threading import Thread
+import sys
+from multiprocessing import Process, JoinableQueue, Queue, Value
 
 import arrow
 
 import FileManager
 import tools
 from context import Context
+from objects.sobject import ColumnMap
 from schema import SFSchemaManager
 from objects.files import LocalTableConfig
-from sfapi import SFClient
+from sfapi import SFClient, SFQueryTooLarge
 
 __author__ = 'mark'
 
 
-class ExportThread(Thread):
-    def __init__(self, queue: Queue, env_name: str, ctx: Context, db_lock: Lock):
+class ExportThread(Process):
+    def __init__(self, queue: Queue, env_name: str):
         super().__init__(daemon=True)
         self.queue = queue
-        self.ctx = ctx
         self.env_name = env_name
-        self.db_lock: Lock = db_lock
+        self.ctx = tools.setup_env(env_name)
+        self.schema_mgr = SFSchemaManager(self.ctx)
+        self.filemgr = self.ctx.filemgr
+        self.sfclient = self.ctx.sfclient
 
     def run(self):
-        db = None
+        db = self.ctx.dbdriver
         log = logging.getLogger(self.name)
         try:
-            db = tools.get_db_connection(self.env_name)
+            table_configs = self.ctx.filemgr.get_configured_tables()
             while not self.queue.empty():
                 job = self.queue.get()
                 try:
-                    table_name = job['table_name']
-                    schema_mgr = job['schema_mgr']
+                    table_name = job['table_name'].lower()
                     just_sample = job['just_sample']
 
-                    if not db.table_exists(table_name):
-                        schema_mgr.create_table(table_name)
+                    this_table: LocalTableConfig = None
+                    for table_config in table_configs:
+                        if table_config.name == table_name:
+                            this_table = table_config
+                            break
 
-                    log.info(f'Exporting {table_name}')
-                    db.export_native(table_name, self.ctx, just_sample)
+                    if this_table is None:
+                        log.error(f'Configuration for {table_name} not found in config.json - skipping')
+                        continue
+
+                    if not db.table_exists(table_name):
+                        self.schema_mgr.create_table(table_name)
+
+                    total_size = self.ctx.sfclient.record_count(table_name)
+
+                    if this_table.use_bulkapi:
+                        if total_size > 200_000:
+                            self.ctx.sfclient.add_header('Sforce-Enable-PKChunking', 'chunkSize=5000')
+                        else:
+                            self.ctx.sfclient.drop_header('Sforce-Enable-PKChunking')
+                        #
+                        # Salesforce does an annoying thing - datetime fields retrieve via bulk api are in
+                        # millis-since-epoch rather than the usual ISO string format.  So, we need to convert
+                        # them back. Get the map and remove everything but datetime fields (for speed).
+                        #
+                        colmap: [ColumnMap] = self.ctx.filemgr.get_sobject_map(table_name)
+                        dtmap: [ColumnMap] = list()
+                        for col in iter(colmap):
+                            if col.field_type == 'datetime':
+                                dtmap.append(col)
+
+                        log.info(f'Exporting {total_size} records in {table_name} using bulk query (may take longer)')
+                        with db.create_exporter(table_name, self.ctx, just_sample) as exporter:
+                            for rec in self.ctx.sfclient.bulk_query(table_name, exporter.soql()):
+                                # replace all the numeric timestamps with correct strings
+                                for col in dtmap:
+                                    epoch = rec.get(col.sobject_field, None)
+                                    if epoch is not None:
+                                        dt = datetime.datetime.fromtimestamp(epoch / 1000)
+                                        rec[col.sobject_field] = tools.sf_timestamp(dt)
+                                exporter.write(rec)
+                    else:
+                        log.info(f'Exporting {table_name}')
+                        with db.create_exporter(table_name, self.ctx, just_sample) as exporter:
+                            for rec in self.ctx.sfclient.query(exporter.soql()):
+                                exporter.write(rec)
+
+                                if exporter.counter % 2000 == 0 and sys.stdout.isatty():
+                                    print('{}: exporting {} records: {:.0f}%\r'.format(exporter.sobject_name,
+                                                                               total_size,
+                                                                               (exporter.counter / total_size) * 100),
+                                                                               end='\r', flush=True)
                 finally:
                     self.queue.task_done()
         finally:
             db.close()
 
 
-class SyncThread(Thread):
-    def __init__(self, queue: Queue, env_name: str, filemgr: FileManager, sfclient: SFClient, db_lock: Lock):
+class SyncThread(Process):
+    def __init__(self, queue: Queue, env_name: str, filemgr: FileManager, sfclient: SFClient, total_calls: Value):
         super().__init__(daemon=True)
         self.queue = queue
         self.filemgr = filemgr
         self.sfclient = sfclient
         self.env_name = env_name
-        self.db_lock: Lock = db_lock
+
+        self.context = tools.setup_env(env_name)
+        self.schema_mgr = SFSchemaManager(self.context)
+        self.filemgr = self.context.filemgr
+        self.sfclient = self.context.sfclient
+        self.total_calls: Value = total_calls
 
     def run(self):
-        db = None
+        db = self.context.dbdriver
         log = logging.getLogger(self.name)
         try:
-            db = tools.get_db_connection(self.env_name)
             while not self.queue.empty():
+                self.sfclient.calls = 0
                 job = self.queue.get()
                 jobid = job['jobid']
-                soql = job['soql']
-                sobject_name = job['sobject_name']
-                timestamp = job['timestamp']
+                tabledef: LocalTableConfig = job['table']
+                sobject_name = tabledef.name.lower()
 
-                sobject_name = sobject_name.lower()
-                log.info(f'start sync {sobject_name}')
+                log.info(f'Checking {sobject_name} schema for changes')
+                proceed = self.schema_mgr.update_sobject_definition(sobject_name,
+                                                                    allow_add=tabledef.auto_create_columns,
+                                                                    allow_drop=tabledef.auto_drop_columns)
+                if not proceed:
+                    print(f'sync of {sobject_name} skipped due to warnings')
+                    continue
+
+                timestamp = self.context.dbdriver.max_timestamp(sobject_name)
+                soql = self.context.filemgr.get_sobject_query(sobject_name)
 
                 xlate_handler = self.filemgr.load_translate_handler(sobject_name)
+                new_sync = False
                 if timestamp is not None:
-                    soql += " where SystemModStamp > {}".format(tools.sf_timestamp(timestamp))
+                    soql += " where SystemModStamp >= {}".format(tools.sf_timestamp(timestamp))
                     soql += " order by SystemModStamp ASC"
-                cur = db.cursor
-                counter = 0
-                journal = self.filemgr.create_journal(sobject_name)
-                try:
-                    sync_start = datetime.datetime.now()
-                    inserted = 0
-                    updated = 0
-                    for rec in self.sfclient.query(soql):
-                        del rec['attributes']
-                        trec = xlate_handler.parse(rec)
+                    log.info(f'start sync {sobject_name} changes after {timestamp}')
+                else:
+                    soql += ' order by SystemModStamp ASC'
+                    log.info(f'start full download of {sobject_name}')
+                    new_sync = True
+                with db.cursor as cur:
+                    counter = 0
+                    # journal = self.filemgr.create_journal(sobject_name)
+                    try:
+                        sync_start = datetime.datetime.now()
+                        inserted = 0
+                        updated = 0
+                        deleted = 0
+                        for rec in self.sfclient.query(soql, not new_sync):
+                            del rec['attributes']
+                            if rec.get('IsDeleted', False):
+                                db.delete(cur, sobject_name, rec['Id'])
+                                deleted += 1
+                                continue
+                            trec = xlate_handler.parse(rec)
 
-                        try:
-                            self.db_lock.acquire()
-                            i, u = db.upsert(cur, sobject_name, trec, journal)
-                            if i:
-                                inserted += 1
-                            if u:
-                                updated += 1
-                        except Exception as ex:
-                            # with open('/tmp/debug.json', 'w') as x:
-                            #     x.write(json.dumps(trec, indent=4, default=tools.json_serial))
-                            raise ex
-                        finally:
-                            self.db_lock.release()
+                            try:
+                                i, u = db.upsert(cur, sobject_name, trec, None)
+                                if i:
+                                    inserted += 1
+                                if u:
+                                    updated += 1
+                            except Exception as ex:
+                                # with open('/tmp/debug.json', 'w') as x:
+                                #     x.write(json.dumps(trec, indent=4, default=tools.json_serial))
+                                raise ex
 
-                        if i or u:
-                            counter += 1
-                            if counter % 1000 == 0:
-                                log.info(f'{sobject_name} processed {counter}')
-                            if counter % 1000 == 0:
-                                db.commit()
-                    db.commit()
-                    log.info(f'end sync {sobject_name}: {inserted} inserts, {updated} updates')
-                    if counter > 0:
-                        db.insert_sync_stats(jobid, sobject_name, sync_start, datetime.datetime.now(), timestamp,
-                                             inserted,
-                                             updated)
-                except Exception as ex:
-                    db.rollback()
-                    raise ex
-                finally:
-                    self.queue.task_done()
-                    cur.close()
-                    journal.close()
+                            if i or u:
+                                counter += 1
+                                if counter % 2000 == 0:
+                                    log.info(f'{sobject_name} processed {counter}')
+                                if counter % 10000 == 0:
+                                    db.commit()
+                        db.commit()
+                        self.total_calls.value += self.sfclient.calls
+                        log.info(f'end sync {sobject_name}: {inserted} inserts, {updated} updates, {deleted} deletes')
+                        log.info(f'API calls used for {sobject_name}: {self.sfclient.calls}')
+
+                        if counter > 0:
+                            db.insert_sync_stats(jobid, sobject_name, sync_start, datetime.datetime.now(), timestamp,
+                                                 inserted, updated, deleted, self.sfclient.calls)
+                    except SFQueryTooLarge:
+                        log.error(f'Query for {sobject_name} too large for REST API - switch to bulkapi to continue')
+
+                    except Exception as ex:
+                        db.rollback()
+                        raise ex
+                    finally:
+                        self.queue.task_done()
+                        # journal.close()
         finally:
             db.close()
-            return
 
 
 class SFExporter:
@@ -143,113 +214,46 @@ class SFExporter:
             self.log.warning('No tables enabled for sync')
             return
         jobid = self.context.dbdriver.start_sync_job()
-        queue: Queue = Queue()
-        shared_lock: Lock = Lock()
+        queue: Queue = JoinableQueue()
         try:
             self.log.info('Building table sync queue')
             for table in tablelist:
                 tablename = table.name.lower()
                 if not self.context.dbdriver.table_exists(tablename):
                     schema_mgr.create_table(tablename)
-                else:
-                    # check for column changes and process accordingly
-                    proceed = schema_mgr.update_sobject_definition(tablename, allow_add=table.auto_create_columns,
-                                                                   allow_drop=table.auto_drop_columns)
-                    if not proceed:
-                        print('sync of {} skipped due to warnings'.format(tablename))
-                        return
 
-                tstamp = self.context.dbdriver.max_timestamp(tablename)
-                soql = self.context.filemgr.get_sobject_query(tablename)
-                queue.put({'jobid': jobid, 'soql': soql, 'sobject_name': tablename, 'timestamp': tstamp})
-                # self.etl(jobid, soql, tablename, timestamp=tstamp)
+                queue.put({'jobid': jobid, 'table': table})
 
             self.log.info(f'Allocating {self.context.env.threads} thread(s)')
             pool: [SyncThread] = list()
+            total_api_calls: Value = Value('i', 0)
             for i in range(0, self.context.env.threads):
-                job = SyncThread(queue, self.context.envname, self.context.filemgr, self.context.sfclient, shared_lock)
+                job = SyncThread(queue, self.context.envname, self.context.filemgr, self.context.sfclient, total_api_calls)
                 job.start()
                 pool.append(job)
+
             for t in pool:
                 self.log.debug(f'Waiting on thread {t.name}')
                 t.join()
             if not queue.empty():
                 self.log.warning('All threads finished before queue was drained')
-            # queue.join()
+            self.log.info(f"Total API calls used during sync: {total_api_calls.value}")
 
         finally:
             self.context.dbdriver.finish_sync_job(jobid)
             self.context.dbdriver.clean_house(arrow.now().shift(months=-2).datetime)
 
-    def etl(self, jobid, soql, sobject_name, timestamp=None):
-
-        sobject_name = sobject_name.lower()
-        dbdriver = self.context.dbdriver
-
-        self.log.info(f'sync {sobject_name}')
-        xlate_handler = self.context.filemgr.load_translate_handler(sobject_name)
-        if timestamp is not None:
-            soql += " where SystemModStamp > {}".format(tools.sf_timestamp(timestamp))
-            soql += " order by SystemModStamp ASC"
-        cur = dbdriver.cursor
-        counter = 0
-        journal = self.context.filemgr.create_journal(sobject_name)
-        try:
-            sync_start = datetime.datetime.now()
-            inserted = 0
-            updated = 0
-            for rec in self.context.sfclient.query(soql):
-                del rec['attributes']
-                trec = xlate_handler.parse(rec)
-
-                try:
-                    i, u = dbdriver.upsert(cur, sobject_name, trec, journal)
-                    if i:
-                        inserted += 1
-                    if u:
-                        updated += 1
-                except Exception as ex:
-                    with open('/tmp/debug.json', 'w') as x:
-                        x.write(json.dumps(trec, indent=4, default=tools.json_serial))
-                    raise ex
-
-                if i or u:
-                    counter += 1
-                    if counter % 100 == 0:
-                        print('processed {}'.format(counter))
-                    if counter % 1000 == 0:
-                        dbdriver.commit()
-            dbdriver.commit()
-            print('processed {}'.format(counter))
-            if counter > 0:
-                dbdriver.insert_sync_stats(jobid, sobject_name, sync_start, datetime.datetime.now(), timestamp,
-                                           inserted,
-                                           updated)
-        except Exception as ex:
-            dbdriver.rollback()
-            raise ex
-        finally:
-            cur.close()
-            journal.close()
-
-    def export_copy_sql(self, sobject_name, schema_mgr: SFSchemaManager, just_sample=False, timestamp=None):
-
-        sobject_name = sobject_name.lower()
-        if not self.context.driver.table_exists(sobject_name):
-            schema_mgr.create_table(sobject_name)
-        self.context.driver.export_native(sobject_name, just_sample, timestamp)
-
-    def export_tables(self, table_list: [str], schema_mgr: SFSchemaManager, just_sample=False):
-        queue: Queue = Queue()
-        shared_lock: Lock = Lock()
+    def export_tables(self, table_list: [str], just_sample=False):
+        queue: Queue = JoinableQueue()
         for tablename in table_list:
             tablename = tablename.lower()
             queue.put({'table_name': tablename, 'just_sample': just_sample})
 
-        self.log.info(f'Allocating {self.context.env.threads} thread(s)')
-        pool: [SyncThread] = list()
-        for i in range(0, self.context.env.threads):
-            job = ExportThread(queue, self.context.envname, self.context, shared_lock)
+        thread_count = min(self.context.env.threads, queue.qsize())
+        self.log.info(f'Allocating {thread_count} thread(s)')
+        pool: [ExportThread] = list()
+        for i in range(0, thread_count):
+            job = ExportThread(queue, self.context.envname)
             job.start()
             pool.append(job)
         for t in pool:

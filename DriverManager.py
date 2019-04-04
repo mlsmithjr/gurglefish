@@ -1,7 +1,7 @@
 import datetime
 import pkgutil
 from abc import ABCMeta, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from objects.connections import ConnectionConfig
 from objects.sobject import ColumnMap
@@ -22,11 +22,31 @@ class GetDbTablesResult(object):
         self.name = name
 
 
+class DbNativeExporter(object):
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def soql(self) -> str:
+        pass
+
+    @abstractmethod
+    def write(self, record: Dict):
+        pass
+
+    @abstractmethod
+    def close(self):
+        pass
+
+
 class DbDriverMeta(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
     def connect(self, env: ConnectionConfig):
+        pass
+
+    @abstractmethod
+    def create_exporter(self, sobject_name: str, ctx, just_sample=False, timestamp=None) -> DbNativeExporter:
         pass
 
     @abstractmethod
@@ -78,6 +98,10 @@ class DbDriverMeta(object):
         pass
 
     @abstractmethod
+    def delete(self, cur, table_name: str, key: str):
+        pass
+
+    @abstractmethod
     def upsert(self, cur, table_name: str, trec: dict, journal=None):
         pass
 
@@ -94,7 +118,7 @@ class DbDriverMeta(object):
         pass
 
     @abstractmethod
-    def insert_sync_stats(self, jobid, table_name, sync_start, sync_end, sync_since, inserts, updates):
+    def insert_sync_stats(self, jobid, table_name, sync_start, sync_end, sync_since, inserts, updates, deletes, api_calls):
         pass
 
     @abstractmethod
@@ -107,11 +131,6 @@ class DbDriverMeta(object):
 
     @abstractmethod
     def alter_table_add_columns(self, new_field_defs, sobject_name: str) -> [ColumnMap]:
-        pass
-
-    @abstractmethod
-    def export_native(self, sobject_name: str, ctx, just_sample=False,
-                      timestamp=None):
         pass
 
     @abstractmethod

@@ -185,8 +185,7 @@ class SFSchemaManager:
             parser = self.driver.make_transformer(sobject_name, sobject_name, fieldmap)
             self.filemgr.save_sobject_transformer(sobject_name, parser)
 
-            self.filemgr.save_sobject_fields(sobject_name, [f for f in sobj_columns.values()])
-
+            self.filemgr.save_sobject_fields(sobject_name, sobj_columns)
         return True
 
     def initialize_config(self, envname: str):

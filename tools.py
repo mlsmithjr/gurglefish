@@ -13,6 +13,10 @@ _log = logging.getLogger('main')
 
 
 def setup_env(envname) -> Optional[Context]:
+
+    logconfig = load_log_config()
+    logging.config.dictConfig(logconfig)
+
     mde = Connections()
     env: ConnectionConfig = mde.get_db_env(envname)
     if env is None:
