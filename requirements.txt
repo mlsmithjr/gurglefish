@@ -1,6 +1,5 @@
 pyyaml
 requests
 fastcache
-psycopg2
 psycopg2-binary
 arrow

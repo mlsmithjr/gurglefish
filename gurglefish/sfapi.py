@@ -1,4 +1,19 @@
-
+#    Copyright 2018, 2019 Marshall L Smith Jr
+#
+#    This file is part of Gurglefish.
+#
+#    Gurglefish is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Gurglefish is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with Gurglefish.  If not, see <http://www.gnu.org/licenses/>.
 import logging
 import json
 import operator
@@ -8,7 +23,7 @@ from typing import Dict, Optional
 import requests
 from fastcache import lru_cache
 
-from objects.sobject import SObjectFields
+from gurglefish.objects.sobject import SObjectFields
 
 MAX_BATCH_SIZE = 100
 _API_VERSION = '44.0'

@@ -23,9 +23,9 @@ setuptools.setup(
     long_description = long_description,
     long_description_content_type = 'text/markdown',
     url='https://github.com/mlsmithjr/gurglefish-cli',
-    data_files=[('share/doc/gurglefish', ['README.md', ])],
+    data_files=[('share/doc/gurglefish', ['README.md', 'LICENSE' ])],
     packages=['gurglefish'],
-    install_requires=['requests', 'psycopg2', 'fastcache', 'arrow', 'python-dateutil', 'pyyaml'],
+    install_requires=['requests==2.21.0', 'psycopg2==2.8', 'fastcache==1.0.2', 'arrow==0.13.1', 'python-dateutil==2.8.0', 'pyyaml==5.1'],
     entry_points={"console_scripts": ["gurglefish=gurglefish.sfarchive:main"]},
     classifiers=[
       'Programming Language :: Python :: 3',
@@ -38,6 +38,6 @@ setuptools.setup(
       'Operating System :: MacOS :: MacOS X',
       'Operating System :: Microsoft :: Windows :: Windows 10',
     ],
-    keywords='salesforce sobject database synchronization postgres postgresql',
+    keywords='salesforce sobject database synchronization snapshots postgres postgresql',
 )
 

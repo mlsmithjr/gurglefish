@@ -193,3 +193,4 @@ It is up to you if you want to schedule automatic runs via **cron** or other mec
 Gurglefish logs statistics for each table on each run to 2 tables:  _gf_mdata_sync_jobs_ (master) and _gf_mdata_sync_stats_ (detail) You are free to query these as you like for reporting, auditing, etc. Job statitics are kept for 2 months and cleaned out as they expire.  So if you want to keep them around longer you should make provisions to sync them elsewhere. A custom trigger to replicate inserts to a longer-term set of tables is a good idea.
 
 Also, a record of automatic schema changes is recorded in _gf_mdata_schema_chg_. So whenever a new or dropped column is detected on an sobject it is recorded here.  This table is never purged.
+

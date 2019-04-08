@@ -1,15 +1,32 @@
+#    Copyright 2018, 2019 Marshall L Smith Jr
+#
+#    This file is part of Gurglefish.
+#
+#    Gurglefish is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Gurglefish is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with Gurglefish.  If not, see <http://www.gnu.org/licenses/>.
 import argparse
 import logging.config
 import sys
 from typing import Dict
 
-import tools
-from schema import SFSchemaManager
-from sfexport import SFExporter
-from sfimport import SFImporter
+from gurglefish import tools
+from gurglefish.schema import SFSchemaManager
+from gurglefish.sfexport import SFExporter
+
+from gurglefish.sfimport import SFImporter
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(
         epilog='@file arguments designate a file containing actual arguments, one per line')
     group = parser.add_mutually_exclusive_group()
@@ -75,3 +92,8 @@ if __name__ == '__main__':
             logger.info('loading {}'.format(tablename))
             count = imp.bulk_load(tablename)
             logger.info('loaded {} records'.format(count))
+
+
+if __name__ == '__main__':
+    main()
+

@@ -1,4 +1,20 @@
-import json
+#    Copyright 2018, 2019 Marshall L Smith Jr
+#
+#    This file is part of Gurglefish.
+#
+#    Gurglefish is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Gurglefish is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with Gurglefish.  If not, see <http://www.gnu.org/licenses/>.
+
 import logging
 import os
 import datetime
@@ -7,13 +23,13 @@ from multiprocessing import Process, JoinableQueue, Queue, Value
 
 import arrow
 
-import FileManager
-import tools
-from context import Context
-from objects.sobject import ColumnMap
-from schema import SFSchemaManager
-from objects.files import LocalTableConfig
-from sfapi import SFClient, SFQueryTooLarge
+from gurglefish import FileManager
+from gurglefish import tools
+from gurglefish.context import Context
+from gurglefish.objects.sobject import ColumnMap
+from gurglefish.schema import SFSchemaManager
+from gurglefish.objects.files import LocalTableConfig
+from gurglefish.sfapi import SFClient, SFQueryTooLarge
 
 __author__ = 'mark'
 
@@ -86,7 +102,7 @@ class ExportThread(Process):
                             for rec in self.ctx.sfclient.query(exporter.soql()):
                                 exporter.write(rec)
 
-                                if exporter.counter % 2000 == 0 and sys.stdout.isatty():
+                                if exporter.counter % 5000 == 0 and sys.stdout.isatty():
                                     print('{}: exporting {} records: {:.0f}%\r'.format(exporter.sobject_name,
                                                                                total_size,
                                                                                (exporter.counter / total_size) * 100),
@@ -172,7 +188,7 @@ class SyncThread(Process):
 
                             if i or u:
                                 counter += 1
-                                if counter % 2000 == 0:
+                                if counter % 5000 == 0:
                                     log.info(f'{sobject_name} processed {counter}')
                                 if counter % 10000 == 0:
                                     db.commit()

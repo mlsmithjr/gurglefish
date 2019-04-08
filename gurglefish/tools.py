@@ -1,13 +1,30 @@
+#    Copyright 2018, 2019 Marshall L Smith Jr
+#
+#    This file is part of Gurglefish.
+#
+#    Gurglefish is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Gurglefish is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with Gurglefish.  If not, see <http://www.gnu.org/licenses/>.
 import datetime
+import os
 from typing import Optional
 
 import yaml
 
-import DriverManager
-from context import Context
-from objects.connections import Connections, ConnectionConfig
-from sfapi import SFClient
-import logging
+from gurglefish import DriverManager
+from gurglefish.context import Context
+from gurglefish.objects.connections import Connections, ConnectionConfig
+from gurglefish.sfapi import SFClient
+import logging.config
 
 _log = logging.getLogger('main')
 
@@ -95,6 +112,7 @@ def make_arg_list(args_list):
 
 
 def load_log_config():
-    with open('logging.yml', 'r') as configfile:
+    path = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(path, 'logging.yml'), 'r') as configfile:
         _logconfig = yaml.load(configfile.read(), Loader=yaml.FullLoader)
         return _logconfig

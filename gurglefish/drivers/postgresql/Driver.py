@@ -1,3 +1,20 @@
+#    Copyright 2018, 2019 Marshall L Smith Jr
+#
+#    This file is part of Gurglefish.
+#
+#    Gurglefish is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Gurglefish is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with Gurglefish.  If not, see <http://www.gnu.org/licenses/>.
+
 import datetime
 import gzip
 import json
@@ -14,13 +31,13 @@ import psycopg2.extras
 from fastcache import lru_cache
 from psycopg2._psycopg import connection, cursor
 
-import FileManager
-import config
-import tools
-from DriverManager import DbDriverMeta, GetDbTablesResult, DbNativeExporter
-from objects.connections import ConnectionConfig
-from context import Context
-from objects.sobject import SObjectField, SObjectFields, ColumnMap
+from gurglefish import FileManager
+from gurglefish import config
+from gurglefish import tools
+from gurglefish.DriverManager import DbDriverMeta, GetDbTablesResult, DbNativeExporter
+from gurglefish.objects.connections import ConnectionConfig
+from gurglefish.context import Context
+from gurglefish.objects.sobject import SObjectField, SObjectFields, ColumnMap
 
 
 class NativeExporter(DbNativeExporter):
@@ -523,7 +540,7 @@ class Driver(DbDriverMeta):
         return stamp
 
     def make_transformer(self, sobject_name, table_name, fieldlist: [ColumnMap]):
-        parser = 'from transformutils import id, bl, db, dt, st, ts, inte\n\n'
+        parser = 'from gurglefish.transformutils import id, bl, db, dt, st, ts, inte\n\n'
         parser += 'def parse(rec):\n' + \
                   '  result = dict()\n\n'
         #                  '  def push(name, value):\n' + \

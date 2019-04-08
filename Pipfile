@@ -9,8 +9,9 @@ pyyaml = "*"
 arrow = "*"
 fastcache = "*"
 psycopg2-binary = "*"
+psycopyg2-binary = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.7.2"
+python_version = "3.6"
