@@ -14,7 +14,7 @@ with open('README.md', 'r') as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name='gurglefish-cli',
+    name='gurglefish',
     version=version,
     python_requires='>=3.6',
     author='Marshall L Smith Jr',
@@ -22,10 +22,11 @@ setuptools.setup(
     description='Sync and maintain Salesforce sobjects in a Postgres database',
     long_description = long_description,
     long_description_content_type = 'text/markdown',
-    url='https://github.com/mlsmithjr/gurglefish-cli',
-    data_files=[('share/doc/gurglefish', ['README.md', 'LICENSE' ])],
-    packages=['gurglefish'],
-    install_requires=['requests==2.21.0', 'psycopg2==2.8', 'fastcache==1.0.2', 'arrow==0.13.1', 'python-dateutil==2.8.0', 'pyyaml==5.1'],
+    url='https://github.com/mlsmithjr/gurglefish',
+    include_package_data=True,
+#    data_files=[('share/doc/gurglefish', ['README.md', 'LICENSE' ]), ('config', ['gurglefish/logging.yml'])],
+    packages=setuptools.find_packages(),
+    install_requires=['requests==2.21.0', 'psycopg2-binary==2.8', 'fastcache==1.0.2', 'arrow==0.13.1', 'python-dateutil==2.8.0', 'pyyaml==5.1'],
     entry_points={"console_scripts": ["gurglefish=gurglefish.sfarchive:main"]},
     classifiers=[
       'Programming Language :: Python :: 3',
