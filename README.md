@@ -28,13 +28,13 @@
 * Postgresql 9.6 or higher
 
 ```bash
-pip3 install --user gurglefish-cli
+pip3 install --user gurglefish
 ```
 
 To update:
 
 ```bash
-pip3 install --upgrade gurglefish-cli
+pip3 install --upgrade gurglefish
 ```
 
 In order to use the _export_ feature to initially populate very large tables (recommended) you must
@@ -178,7 +178,7 @@ To enable just add "bulkapi":true to the sobject in config.json.  All sync requi
 #### Running
 
 ```bash
-	gurglefish-cli prod --sync
+	gurglefish prod --sync
 ```
 Seriously, could it be any easier? (don't answer).
 

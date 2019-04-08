@@ -16,6 +16,7 @@
 #    along with Gurglefish.  If not, see <http://www.gnu.org/licenses/>.
 
 import datetime
+import os
 import pkgutil
 from abc import ABCMeta, abstractmethod
 from typing import List, Optional, Dict
@@ -170,7 +171,8 @@ class Manager(object):
 
     def __init__(self):
         self._res = {}
-        modules = pkgutil.iter_modules(path=['gurglefish/drivers'])
+        path = os.path.dirname(os.path.abspath(__file__))
+        modules = pkgutil.iter_modules(path=[os.path.join(path, 'drivers')])
         for finder, mod_name, ispkg in modules:
             toload = finder.find_module(mod_name)
             mod = toload.load_module(mod_name)

@@ -16,7 +16,7 @@
 #    along with Gurglefish.  If not, see <http://www.gnu.org/licenses/>.
 from typing import Optional
 
-__author__ = 'mark'
+__author__ = 'Marshall L Smith Jr'
 
 import os
 import configparser
