@@ -4,6 +4,8 @@
 
 ---
 
+Backup your Salesforce sobject data to Postgres and keep in sync.
+
 #### Features
 
 * One-way data snapshots from Salesforce to Postgres.
