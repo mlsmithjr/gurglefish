@@ -18,6 +18,7 @@
 import gzip
 import json
 import os
+import sys
 from typing import Optional
 
 from gurglefish.objects.files import LocalTableConfig
@@ -33,8 +34,22 @@ class FileManager(object):
         self.envname = envname
         self.schemadir = os.path.join(basedir, 'db', envname, 'schema')
         self.exportdir = os.path.join(basedir, 'db', envname, 'export')
-        os.makedirs(self.schemadir, exist_ok=True)
-        os.makedirs(self.exportdir, exist_ok=True)
+
+        if not os.path.exists(basedir):
+            print(f'Gurglefish root director {basedir} does not exists')
+            sys.exit(1)
+
+        try:
+            os.makedirs(self.schemadir, exist_ok=True)
+        except PermissionError as pex:
+            print(f'Permission denied creating {self.schemadir}')
+            sys.exit(1)
+
+        try:
+            os.makedirs(self.exportdir, exist_ok=True)
+        except PermissionError as pex:
+            print(f'Permission denied creating {self.exportdir}')
+            sys.exit(1)
 
     def create_journal(self, sobject_name):
         f = gzip.open(os.path.join(self.exportdir, '{}_journal.log.gz'.format(sobject_name)), 'wb')

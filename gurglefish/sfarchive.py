@@ -32,15 +32,15 @@ def main():
     group = parser.add_mutually_exclusive_group()
     parser.add_argument("env", help="Environment/DB settings name", metavar="env_name")
     group.add_argument("--sync", help="sync table updates", nargs="*", metavar="sobject|@file")
-    group.add_argument("--schema", help="load sobject schema and create tables", nargs="*", metavar="sobject|@file")
+    group.add_argument("--schema", help="load sobject schema and create tables if missing", nargs="*", metavar="sobject|@file")
     group.add_argument("--export", help="export full sobject data", nargs="+", metavar="sobject|@file")
     group.add_argument("--load", help="load/import full table data, table must be empty", nargs="*",
                        metavar="sobject|@file")
-    parser.add_argument("--inspect", help="inspect objects", action="store_true")
-    parser.add_argument("--sample", help="sample data (500 rows)", action="store_true")
-    group.add_argument("--init", help="initialize configuration for given environment", action="store_true")
+    parser.add_argument("--inspect", help="list available sobjects", action="store_true")
+    #parser.add_argument("--sample", help="sample data (500 rows)", action="store_true")
+    group.add_argument("--init", help="create config.json file for given environment", action="store_true")
     parser.add_argument("--enable", help="enable one or more tables to sync", nargs="+", metavar="sobject|@file")
-    parser.add_argument("--disable", help="enable one or more tables to sync", nargs="+", metavar="sobject|@file")
+    parser.add_argument("--disable", help="disable one or more tables from sync", nargs="+", metavar="sobject|@file")
     args = parser.parse_args()
 
     envname = args.env

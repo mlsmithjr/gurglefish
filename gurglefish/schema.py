@@ -206,7 +206,8 @@ class SFSchemaManager:
 
     def initialize_config(self, envname: str):
         if self.filemgr.get_configured_tables() is not None:
-            self.log.error('Initialization halted, config.json already exists. Please remove manually to start over')
+            self.log.error('Initialization halted, config.json already exists. '
+                           'Remove file and tables manually to start over')
             exit(1)
         sobject_list: [Dict] = self.inspect()
         sobjectconfig = []
