@@ -24,7 +24,7 @@ import os
 import string
 import subprocess
 import sys
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import psycopg2
 import psycopg2.extras
@@ -55,7 +55,7 @@ class NativeExporter(DbNativeExporter):
         self.fieldmap = dict((f.db_field.lower(), f) for f in fieldlist)
 
         self.tablefields: Dict = self.dbdriver.get_table_fields(self.sobject_name)
-        self.tablefields: Dict = sorted(self.tablefields.values(), key=operator.itemgetter('ordinal_position'))
+        self.tablefields: List = sorted(self.tablefields.values(), key=operator.itemgetter('ordinal_position'))
         soqlfields = [fm.sobject_field for fm in self.fieldmap.values()]
 
         self.query = 'select {} from {}'.format(','.join(soqlfields), self.sobject_name)
@@ -65,7 +65,7 @@ class NativeExporter(DbNativeExporter):
             self.log.info('sampling 500 records max')
             self.query += ' limit 500'
         self.counter = 0
-        self.export_file = gzip.open(os.path.join(filemgr.exportdir, self.sobject_name + '.exp.gz'), 'wb', compresslevel=5)
+        self.export_file = gzip.open(os.path.join(filemgr.exportdir, self.sobject_name + '.exp.gz'), 'wb', compresslevel=6)
 
     def __enter__(self):
         return self
@@ -254,20 +254,18 @@ class Driver(DbDriverMeta):
 
     def import_native(self, tablename):
         tablename = tablename.lower()
-        if not os.path.isfile('/usr/bin/psql'):
-            raise Exception('/usr/bin/psql not found. Please install postgresql client to use bulk loading')
 
         exportfile = os.path.join(self.storagedir, 'export', tablename + '.exp.gz')
-        cmd = r"\copy {} from program 'gzip -dc < {}'".format(self.fq_table(tablename), exportfile)
-        cmdargs = ['/usr/bin/psql', '-h', self.dbhost, '-d', self.dbname, '-c', cmd]
-        try:
-            outputbytes = subprocess.check_output(cmdargs)
-            result = outputbytes.decode('utf-8').strip()
-            if result.startswith('COPY'):
-                return int(result[5:])
-        except Exception as ex:
-            self.log.fatal(ex)
-        return 0
+        with self.cursor as cur:
+            with gzip.open(exportfile, 'rb') as infile:
+                cur.copy_from(infile, tablename)
+            self.db.commit()
+
+    def export_native(self, table_name, output_path):
+        table_name = table_name.lower()
+        with self.cursor as cur:
+            with gzip.open(output_path, 'wb', compresslevel=6) as outfile:
+                cur.copy_to(outfile, table_name)
 
     def delete(self, cur, table_name: str, key: str):
         table_name = self.fq_table(table_name)

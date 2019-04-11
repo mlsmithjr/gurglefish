@@ -16,6 +16,7 @@
 #    along with Gurglefish.  If not, see <http://www.gnu.org/licenses/>.
 import argparse
 import logging.config
+import os
 import sys
 from typing import Dict
 
@@ -33,9 +34,10 @@ def main():
     parser.add_argument("env", help="Environment/DB settings name", metavar="env_name")
     group.add_argument("--sync", help="sync table updates", nargs="*", metavar="sobject|@file")
     group.add_argument("--schema", help="load sobject schema and create tables if missing", nargs="*", metavar="sobject|@file")
-    group.add_argument("--export", help="export full sobject data", nargs="+", metavar="sobject|@file")
+    group.add_argument("--export", help="export full sobject data to file", nargs="+", metavar="sobject|@file")
     group.add_argument("--load", help="load/import full table data, table must be empty", nargs="*",
                        metavar="sobject|@file")
+    group.add_argument("--dump", help="dump contents of table to file", nargs="+", metavar="table|@file")
     parser.add_argument("--inspect", help="list available sobjects", action="store_true")
     #parser.add_argument("--sample", help="sample data (500 rows)", action="store_true")
     group.add_argument("--init", help="create config.json file for given environment", action="store_true")
@@ -84,6 +86,12 @@ def main():
         exp = SFExporter(context)
         table_list = tools.make_arg_list(args.export)
         exp.export_tables(table_list, just_sample=args.sample)
+
+    if args.dump is not None:
+        table_list = tools.make_arg_list(args.dump)
+        for table in table_list:
+            export_file = os.path.join(context.filemgr.exportdir, table + '.exp.gz')
+            context.dbdriver.export_native(table, export_file)
 
     if args.load and len(args.load) > 0:
         imp = SFImporter(context, schema_mgr)

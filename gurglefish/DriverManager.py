@@ -127,6 +127,10 @@ class DbDriverMeta(object):
         pass
 
     @abstractmethod
+    def export_native(self, table_name, output_path):
+        pass
+
+    @abstractmethod
     def start_sync_job(self):
         pass
 
