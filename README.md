@@ -17,6 +17,7 @@ Backup your Salesforce sobject data to Postgres and keep in sync.
     * Master/Detail and Lookup field IDs.
     * ExternalId fields.
 * Automatic detection of sobject field additions/removals and alteration of table structure to match.
+* Cloud-ready for Amazon RDS and Azure.
 * Synchronization of record additions/changes/deletions since last run.
 * Logging of sync statistics for each table.
 * Export feature to enable faster initial data loading using native Postgres load file format.
