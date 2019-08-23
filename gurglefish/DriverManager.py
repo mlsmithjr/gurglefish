@@ -79,6 +79,10 @@ class DbDriverMeta(object):
         pass
 
     @abstractmethod
+    def dump_ids(self, table_name: str, output_filename: str):
+        pass
+
+    @abstractmethod
     def make_create_table(self, fields: SObjectFields, sobject_name: str):
         pass
 

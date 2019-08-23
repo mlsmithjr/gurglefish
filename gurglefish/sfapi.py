@@ -290,6 +290,11 @@ class SFClient:
         fieldlist.sort(key=operator.itemgetter('name'))
         return SObjectFields(fieldlist)
 
+    def dump_ids(self, sobject_name, output_filename: str):
+        with open(output_filename, 'w') as out:
+            for rec in self.query(f'select Id from {sobject_name} order by Id'):
+                out.write(rec['Id'][0:15] + '\n')
+
     def record_count(self, sobject: str, query_filter: str = None):
         soql = 'select count() from ' + sobject
         if query_filter:

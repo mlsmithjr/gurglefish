@@ -132,85 +132,115 @@ class SyncThread(Process):
         log = logging.getLogger(self.name)
         try:
             while not self.queue.empty():
-                self.sfclient.calls = 0
-                job = self.queue.get()
-                jobid = job['jobid']
-                tabledef: LocalTableConfig = job['table']
-                sobject_name = tabledef.name.lower()
+                try:
+                    self.sfclient.calls = 0
+                    job = self.queue.get()
+                    jobid = job['jobid']
+                    tabledef: LocalTableConfig = job['table']
+                    sobject_name = tabledef.name.lower()
 
-                log.info(f'Checking {sobject_name} schema for changes')
-                proceed = self.schema_mgr.update_sobject_definition(sobject_name,
-                                                                    allow_add=tabledef.auto_create_columns,
-                                                                    allow_drop=tabledef.auto_drop_columns)
-                if not proceed:
-                    print(f'sync of {sobject_name} skipped due to warnings')
-                    continue
+                    log.info(f'Checking {sobject_name} schema for changes')
+                    proceed = self.schema_mgr.update_sobject_definition(sobject_name,
+                                                                        allow_add=tabledef.auto_create_columns,
+                                                                        allow_drop=tabledef.auto_drop_columns)
+                    if not proceed:
+                        print(f'sync of {sobject_name} skipped due to warnings')
+                        continue
 
-                timestamp = self.context.dbdriver.max_timestamp(sobject_name)
-                soql = self.context.filemgr.get_sobject_query(sobject_name)
+                    timestamp = self.context.dbdriver.max_timestamp(sobject_name)
+                    soql = self.context.filemgr.get_sobject_query(sobject_name)
 
-                xlate_handler = self.filemgr.load_translate_handler(sobject_name)
-                new_sync = False
-                if timestamp is not None:
-                    soql += " where SystemModStamp >= {}".format(tools.sf_timestamp(timestamp))
-                    soql += " order by SystemModStamp ASC"
-                    log.info(f'start sync {sobject_name} changes after {timestamp}')
-                else:
-                    soql += ' order by SystemModStamp ASC'
-                    log.info(f'start full download of {sobject_name}')
-                    new_sync = True
-                with db.cursor as cur:
-                    counter = 0
-                    # journal = self.filemgr.create_journal(sobject_name)
-                    try:
-                        sync_start = datetime.datetime.now()
-                        inserted = 0
-                        updated = 0
-                        deleted = 0
-                        for rec in self.sfclient.query(soql, not new_sync):
-                            del rec['attributes']
-                            if rec.get('IsDeleted', False):
-                                db.delete(cur, sobject_name, rec['Id'])
-                                deleted += 1
-                                continue
-                            trec = xlate_handler.parse(rec)
+                    xlate_handler = self.filemgr.load_translate_handler(sobject_name)
+                    new_sync = False
+                    if timestamp is not None:
+                        soql += " where SystemModStamp >= {}".format(tools.sf_timestamp(timestamp))
+                        soql += " order by SystemModStamp ASC"
+                        log.info(f'start sync {sobject_name} changes after {timestamp}')
+                    else:
+                        soql += ' order by SystemModStamp ASC'
+                        log.info(f'start full download of {sobject_name}')
+                        new_sync = True
+                    with db.cursor as cur:
+                        counter = 0
+                        # journal = self.filemgr.create_journal(sobject_name)
+                        try:
+                            sync_start = datetime.datetime.now()
+                            inserted = 0
+                            updated = 0
+                            deleted = 0
+                            for rec in self.sfclient.query(soql, not new_sync):
+                                del rec['attributes']
+                                if rec.get('IsDeleted', False):
+                                    db.delete(cur, sobject_name, rec['Id'])
+                                    deleted += 1
+                                    continue
+                                trec = xlate_handler.parse(rec)
 
-                            try:
-                                i, u = db.upsert(cur, sobject_name, trec, None)
-                                if i:
-                                    inserted += 1
-                                if u:
-                                    updated += 1
-                            except Exception as ex:
-                                # with open('/tmp/debug.json', 'w') as x:
-                                #     x.write(json.dumps(trec, indent=4, default=tools.json_serial))
-                                raise ex
+                                try:
+                                    i, u = db.upsert(cur, sobject_name, trec, None)
+                                    if i:
+                                        inserted += 1
+                                    if u:
+                                        updated += 1
+                                except Exception as ex:
+                                    # with open('/tmp/debug.json', 'w') as x:
+                                    #     x.write(json.dumps(trec, indent=4, default=tools.json_serial))
+                                    raise ex
 
-                            if i or u:
-                                counter += 1
-                                if counter % 5000 == 0:
-                                    log.info(f'{sobject_name} processed {counter}')
-                                if counter % 10000 == 0:
-                                    db.commit()
-                        db.commit()
-                        self.total_calls.value += self.sfclient.calls
-                        log.info(f'end sync {sobject_name}: {inserted} inserts, {updated} updates, {deleted} deletes')
-                        log.info(f'API calls used for {sobject_name}: {self.sfclient.calls}')
+                                if i or u:
+                                    counter += 1
+                                    if counter % 5000 == 0:
+                                        log.info(f'{sobject_name} processed {counter}')
+                                    if counter % 10000 == 0:
+                                        db.commit()
+                            db.commit()
 
-                        if counter > 0:
-                            db.insert_sync_stats(jobid, sobject_name, sync_start, datetime.datetime.now(), timestamp,
-                                                 inserted, updated, deleted, self.sfclient.calls)
-                    except SFQueryTooLarge:
-                        log.error(f'Query for {sobject_name} too large for REST API - switch to bulkapi to continue')
+                            # scrub deleted records
+                            if tabledef.auto_scrub:
+                                deleted += self.scrub_deletes(cur, sobject_name)
 
-                    except Exception as ex:
-                        db.rollback()
-                        raise ex
-                    finally:
-                        self.queue.task_done()
-                        # journal.close()
+                            self.total_calls.value += self.sfclient.calls
+                            log.info(f'end sync {sobject_name}: {inserted} inserts, {updated} updates, {deleted} deletes')
+                            log.info(f'API calls used for {sobject_name}: {self.sfclient.calls}')
+
+                            if counter > 0:
+                                db.insert_sync_stats(jobid, sobject_name, sync_start, datetime.datetime.now(), timestamp,
+                                                     inserted, updated, deleted, self.sfclient.calls)
+                        except SFQueryTooLarge:
+                            log.error(f'Query for {sobject_name} too large for REST API - switch to bulkapi to continue')
+
+                        except Exception as ex:
+                            db.rollback()
+                            raise ex
+                finally:
+                    self.queue.task_done()
         finally:
             db.close()
+
+    def scrub_deletes(self, cur, sobject_name: str) -> int:
+        db = self.context.dbdriver
+        log = logging.getLogger(self.name)
+        table_file = os.path.join('/tmp', sobject_name + '.sobject')
+        sobject_file = os.path.join('/tmp', sobject_name + '.table')
+        try:
+            db.dump_ids(sobject_name, table_file)
+            self.context.sfapi.dump_ids(sobject_name, sobject_file)
+
+            # lets 'diff' the two lists, finding deleted rows to purge from local database
+            with open(table_file, 'r') as local:
+                with open(sobject_file, 'r') as remote:
+                    left = set(local.readlines())
+                    right = set(remote.readlines())
+                    ids_to_delete = left - right
+                    for i in ids_to_delete:
+                        db.delete(cur, sobject_name, i.strip())
+            os.unlink(sobject_file)
+            os.unlink(table_file)
+            return len(ids_to_delete)
+
+        except Exception as ex:
+            log.error(ex)
+        return 0
 
 
 class SFExporter:

@@ -19,6 +19,7 @@ Backup your Salesforce sobject data to Postgres and keep in sync.
 * Automatic detection of sobject field additions/removals and alteration of table structure to match.
 * Cloud-ready for Amazon RDS and Azure.
 * Synchronization of record additions/changes/deletions since last run.
+* Scrubbing of hard deleted records can be disabled on a per-table basis.
 * Logging of sync statistics for each table.
 * Export feature to enable faster initial data loading using native Postgres load file format.
 * Fast field mapping using code generation.
@@ -134,7 +135,8 @@ Example:
         "sobjects": [
             {
                 "name": "account",
-                "enabled": false
+                "enabled": false,
+                "auto_scrub": false
             },
             {
                 "name": "account_vetting__c",
@@ -148,7 +150,10 @@ Example:
      }
  }
 ```
-For each sobject you want to sync, set the "enabled" value to **true**.  Save the file. 
+For each sobject you want to sync, set the "enabled" value to **true**.  
+For each sobject you want to suppress auto detection and cleanup of deleted records, set "auto_scrub" to **false**.
+
+Save the file. 
 
 You are ready to start pulling data.  But some choices need to be made first.
 

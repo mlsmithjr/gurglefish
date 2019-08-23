@@ -22,9 +22,8 @@ import logging
 import operator
 import os
 import string
-import subprocess
 import sys
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 import psycopg2
 import psycopg2.extras
@@ -368,6 +367,15 @@ class Driver(DbDriverMeta):
                                               'ordinal_position': c['ordinal_position']}
         return table_fields
 
+    def dump_ids(self, table_name: str, output_filename: str):
+        cur = self.cursor
+        sql = f'select id from {self.schema_name}.{table_name} order by id'
+        cur.execute(sql)
+        with open(output_filename, 'w') as out:
+            for rec in cur:
+                out.write(rec[0] + '\n')
+        cur.close()
+
     def record_count(self, table_name: str) -> int:
         table_cursor = self.db.cursor()
         table_cursor.execute('SELECT count(*) FROM {}.{}'.format(self.schema_name, table_name))
@@ -470,7 +478,7 @@ class Driver(DbDriverMeta):
                 continue
             col = col_def[0]
             ddl = ddl_template.format(self.fq_table(sobject_name), col.db_field, col.dml)
-            print('    adding column {} to {}'.format(col.db_field, sobject_name))
+            print('    adding column {} to {}'.format(col.db_field, self.fq_table(sobject_name)))
             cur.execute(ddl)
             newcols.append(col)
 
