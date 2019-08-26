@@ -43,7 +43,7 @@ def main():
     group.add_argument("--init", help="create config.json file for given environment", action="store_true")
     parser.add_argument("--enable", help="enable one or more tables to sync", nargs="+", metavar="sobject|@file")
     parser.add_argument("--disable", help="disable one or more tables from sync", nargs="+", metavar="sobject|@file")
-    parser.add_argument("--scrub", help="force scrub of deleted records", metavar="force_scrub", action="store_true")
+    parser.add_argument("--scrub", help="force scrub of deleted records", action="store_true")
     args = parser.parse_args()
 
     envname = args.env
@@ -74,7 +74,7 @@ def main():
 
     if args.sync is not None:
         exp = SFExporter(context)
-        exp.sync_tables(schema_mgr, args.force_scrub)
+        exp.sync_tables(schema_mgr, args.scrub)
 
     if args.schema is not None:
         if len(args.schema) > 0:
