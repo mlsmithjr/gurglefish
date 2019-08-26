@@ -48,8 +48,8 @@ class LocalTableConfig(object):
         return self.item.get('auto_create_columns', True)
 
     @property
-    def auto_scrub(self):
-        return self.item.get('auto_scrub', True)
+    def auto_scrub(self) -> str:
+        return self.item.get('auto_scrub', "daily")
 
     @property
     def sync_schedule(self):

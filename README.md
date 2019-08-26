@@ -19,7 +19,7 @@ Backup your Salesforce sobject data to Postgres and keep in sync.
 * Automatic detection of sobject field additions/removals and alteration of table structure to match.
 * Cloud-ready for Amazon RDS and Azure.
 * Synchronization of record additions/changes/deletions since last run.
-* Scrubbing of hard deleted records can be disabled on a per-table basis.
+* Scrubbing of hard deleted records can be disabled on a per-table basis and on the commandline.
 * Logging of sync statistics for each table.
 * Export feature to enable faster initial data loading using native Postgres load file format.
 * Fast field mapping using code generation.
@@ -136,7 +136,7 @@ Example:
             {
                 "name": "account",
                 "enabled": false,
-                "auto_scrub": false
+                "auto_scrub": "always"
             },
             {
                 "name": "account_vetting__c",
@@ -151,7 +151,16 @@ Example:
  }
 ```
 For each sobject you want to sync, set the "enabled" value to **true**.  
-For each sobject you want to suppress auto detection and cleanup of deleted records, set "auto_scrub" to **false**.
+For each sobject you want to auto detect and cleanup of deleted records, set "auto_scrub" to "always". But this comes at a cost of API calls and slows down the overall syncing process.  
+Alternately, you can schedule a run once a day, or some other interval, to perform the scrub.  Late a night is a good choice.
+
+Sample crontab (global scrub once a day at 1am):
+
+```crontab
+0 9,13,15,17,19 * * 1-5	cd /home/masmith/sfarchive && python3 main.py prod --sync >/tmp/sync.log
+0 1 * * 1-5	cd /home/masmith/sfarchive && python3 main.py prod --sync --scrub >/tmp/sync.log
+```
+
 
 Save the file. 
 
@@ -189,7 +198,8 @@ To enable just add "bulkapi":true to the sobject in config.json.  All sync requi
 ```bash
 	gurglefish prod --sync
 ```
-Seriously, could it be any easier? (don't answer).
+
+Seriously, could it be any easier?
 
 Gurglefish will automatically create any missing tables and indexes in postgres you elected to sync from Salesforce.
 

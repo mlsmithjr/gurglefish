@@ -114,7 +114,8 @@ class ExportThread(Process):
 
 
 class SyncThread(Process):
-    def __init__(self, queue: Queue, env_name: str, filemgr: FileManager, sfclient: SFClient, total_calls: Value):
+    def __init__(self, queue: Queue, env_name: str, filemgr: FileManager, sfclient: SFClient, total_calls: Value,
+                 scrub=False):
         super().__init__(daemon=True)
         self.queue = queue
         self.filemgr = filemgr
@@ -126,6 +127,7 @@ class SyncThread(Process):
         self.filemgr = self.context.filemgr
         self.sfclient = self.context.sfclient
         self.total_calls: Value = total_calls
+        self.force_scrub = scrub
 
     def run(self):
         db = self.context.dbdriver
@@ -196,7 +198,7 @@ class SyncThread(Process):
                             db.commit()
 
                             # scrub deleted records
-                            if tabledef.auto_scrub:
+                            if tabledef.auto_scrub == "always" or self.force_scrub:
                                 deleted += self.scrub_deletes(cur, sobject_name)
 
                             self.total_calls.value += self.sfclient.calls
@@ -250,7 +252,7 @@ class SFExporter:
         os.makedirs(self.storagedir, exist_ok=True)
         self.log = logging.getLogger('main')
 
-    def sync_tables(self, schema_mgr: SFSchemaManager):
+    def sync_tables(self, schema_mgr: SFSchemaManager, scrub=False):
         table_config: [LocalTableConfig] = self.context.filemgr.get_configured_tables()
         if table_config is None:
             self.log.error('No configuration found - Use --init to create and then edit')
@@ -274,7 +276,8 @@ class SFExporter:
             pool: [SyncThread] = list()
             total_api_calls: Value = Value('i', 0)
             for i in range(0, self.context.env.threads):
-                job = SyncThread(queue, self.context.envname, self.context.filemgr, self.context.sfclient, total_api_calls)
+                job = SyncThread(queue, self.context.envname, self.context.filemgr, self.context.sfclient,
+                                 total_api_calls, scrub)
                 job.start()
                 pool.append(job)
 
