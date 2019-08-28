@@ -269,6 +269,8 @@ class Driver(DbDriverMeta):
     def delete(self, cur, table_name: str, key: str):
         table_name = self.fq_table(table_name)
         try:
+            if cur.execute(f"SELECT id from {table_name} where id=%s", [key]) is None:
+                return 0
             cur.execute(f'delete from {table_name} where Id=%s', [key])
             return 1
         except Exception as ex:
