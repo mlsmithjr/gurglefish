@@ -270,8 +270,10 @@ class Driver(DbDriverMeta):
         table_name = self.fq_table(table_name)
         try:
             cur.execute(f'delete from {table_name} where Id=%s', [key])
+            return 1
         except Exception as ex:
             self.log.error(f'Deleting record {key} from {table_name}')
+            return 0
 
     def upsert(self, cur, table_name, trec: dict, journal=None):
         assert ('Id' in trec)

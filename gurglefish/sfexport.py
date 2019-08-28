@@ -173,8 +173,7 @@ class SyncThread(Process):
                             for rec in self.sfclient.query(soql, not new_sync):
                                 del rec['attributes']
                                 if rec.get('IsDeleted', False):
-                                    db.delete(cur, sobject_name, rec['Id'])
-                                    deleted += 1
+                                    deleted += db.delete(cur, sobject_name, rec['Id'])
                                     continue
                                 trec = xlate_handler.parse(rec)
 
