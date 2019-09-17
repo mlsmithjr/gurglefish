@@ -167,7 +167,7 @@ class SFSchemaManager:
                 new_field_defs = [sobj_columns.find(f) for f in new_field_names]
                 newfields: [ColumnMap] = self.driver.alter_table_add_columns(new_field_defs, sobject_name)
                 if len(newfields) > 0:
-                    self.driver.maintain_indexes(sobject_name, new_field_defs)
+                    self.driver.maintain_indexes(sobject_name, SObjectFields(new_field_defs))
 
                     fieldmap: [ColumnMap] = self.filemgr.get_sobject_map(sobject_name)
                     fieldmap.extend(newfields)
