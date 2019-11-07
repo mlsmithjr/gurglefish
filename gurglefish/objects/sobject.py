@@ -84,12 +84,17 @@ class SObjectField(object):
 
 
 class SObjectFields(object):
-    def __init__(self, fields: [Dict]):
+    def __init__(self, fields):
         self.fields = dict()
         for field in fields:
-            name = field.name
-            if field.type == 'address':
-                continue
+            if isinstance(field, dict):
+                if field['type'] == 'address':
+                    continue
+                name = field['name']
+            else:
+                if field.type == 'address':
+                    continue
+                name = field.name
             self.fields[name.lower()] = SObjectField(field)
 
     def find(self, name: str) -> Optional[SObjectField]:
