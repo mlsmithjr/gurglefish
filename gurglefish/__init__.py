@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Gurglefish.  If not, see <http://www.gnu.org/licenses/>.
 
-__version__ = '1.1.6'
+__version__ = '1.1.7'
 __author__ = 'Marshall L Smith Jr <marshallsmithjr@gmail.com>'
 __license__ = 'GPLv3'
 
