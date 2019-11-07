@@ -87,8 +87,8 @@ class SObjectFields(object):
     def __init__(self, fields: [Dict]):
         self.fields = dict()
         for field in fields:
-            name = field['name']
-            if field['type'] == 'address':
+            name = field.name
+            if field.type == 'address':
                 continue
             self.fields[name.lower()] = SObjectField(field)
 
