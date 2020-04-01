@@ -550,7 +550,7 @@ class Driver(DbDriverMeta):
         return stamp
 
     def make_transformer(self, sobject_name, table_name, fieldlist: [ColumnMap]):
-        parser = 'from gurglefish.transformutils import id, bl, db, dt, st, ts, inte\n\n'
+        parser = 'from gurglefish.transformutils import id, bl, db, dt, st, ts, tm, inte\n\n'
         parser += 'def parse(rec):\n' + \
                   '  result = dict()\n\n'
         #                  '  def push(name, value):\n' + \

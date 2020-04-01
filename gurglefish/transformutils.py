@@ -14,7 +14,7 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with Gurglefish.  If not, see <http://www.gnu.org/licenses/>.
-from datetime import datetime
+from datetime import datetime, time, date
 
 import decimal
 
@@ -42,6 +42,12 @@ def bl(rec, name, fieldlen):
 def dt(rec, name, fieldlen):
     if name in rec and rec[name] is not None:
         return py_date(rec[name])
+    return None
+
+
+def tm(rec, name, fieldlen):
+    if name in rec and rec[name] is not None:
+        return py_time(rec[name])
     return None
 
 
@@ -83,8 +89,12 @@ def py_timestamp(t) -> datetime:
     return datetime.strptime(t[0:19], '%Y-%m-%dT%H:%M:%S')
 
 
-def py_date(d) -> datetime:
+def py_date(d) -> date:
     return datetime.strptime(d, '%Y-%m-%d').date()
+
+
+def py_time(t) -> time:
+    return datetime.strptime(t[0:8], "%H:%M:%S").time()
 
 
 def scrub(s):

@@ -56,12 +56,12 @@ Use your distribution package search tool (yum, apt, dnf) to find the correct na
 #### Configuration
 
 > **NOTE:** This tool only reads from Salesforce and writes to the database/schema you have configured. However, it is
-still very important to security your accounts appropriately to protect against system invasion. In other words,
+still very important to secure your accounts appropriately to protect against system invasion. In other words,
 **security is your responsibility**. 
 
 **Requirements**:
 
-* An API-enabled Salesforce user account with *read-only* access to all sobjects to sync
+* An API-enabled Salesforce user account with *read-only* access to all sobjects to sync. NOTE that sobjects belonging to managed packages may require a license to access.
 * A configured Connected App in your Salesforce org accessible by the user account
 * A PostgreSQL database and user login with appropriate permission to create and alter tables and indexes only in a schema of your choice.
 
@@ -77,7 +77,7 @@ sudo chmod +rwx /var/lib/gurglefish  # set permissions according to your securit
 If you want to use a different directory, or a mount point, just create a symbolic link to your location.
 Example: ```sudo ln -s /mnt/my-other-storage/sfarchives /var/lib/gurglefish```
 
-Now create the configuration file that provides login credentials to both your Postgres database and Salesforce organization. It is a standard INI file and can contain definitions for multiple database-org relationships.
+Now create the configuration file (connections.ini) that provides login credentials to both your Postgres database and Salesforce organization. It is a standard INI file and can contain definitions for multiple database-org relationships. Put the file in /var/lib/gurglefish.
 It will look something like this (for a single database and org):
 
 ```ini
@@ -107,7 +107,7 @@ The settings are mostly self explanatory:
 otherwise the token can be omitted.
 * The _authurl_ selects either your Salesforce production URL or _https://test.salesforce.com_ for sandboxes.
 * Currently, the only supported _dbvendor_ is postgresql.
-* The _schema_ can be custom, or *public* (the default). If this database. If the database is to be shared with other critical data it is highly recommended to isolate in a custom schema (see postgresql docs).
+* The _schema_ can be custom, or *public* (the default). If the database is to be shared with other critical data it is highly recommended to isolate in a custom schema (see postgresql docs).
 * Use _threads_ with caution.  You can have at most 4, as this is a Salesforce-imposed limitation. But the real bottleneck could be your database server.  Without custom database tuning, or running on a small platform, you should stick with 1 or 2 threads.  Move up to 4 only when you are certain the database isn't a bottleneck.
 
 #### Getting Started
@@ -150,15 +150,17 @@ Example:
      }
  }
 ```
-For each sobject you want to sync, set the "enabled" value to **true**.  
+For each sobject you want to sync, set the "enabled" value to **true**.  Or from the CLI use `gurglefish prod --enable sobject_name__c`. Use `--disable` to stop further syncs.
+ 
 For each sobject you want to auto detect and cleanup of deleted records, set "auto_scrub" to "always". But this comes at a cost of API calls and slows down the overall syncing process.  
+
 Alternately, you can schedule a run once a day, or some other interval, to perform the scrub.  Late a night is a good choice.
 
 Sample crontab (global scrub once a day at 1am):
 
 ```crontab
-0 9,13,15,17,19 * * 1-5	cd /home/masmith/sfarchive && python3 main.py prod --sync >/tmp/sync.log
-0 1 * * 1-5	cd /home/masmith/sfarchive && python3 main.py prod --sync --scrub >/tmp/sync.log
+0 9,13,15,17,19 * * 1-5	gurglefish prod --sync >/tmp/sync.log
+0 1 * * 1-5	        gurglefish prod --sync --scrub >/tmp/sync.log
 ```
 
 
@@ -170,7 +172,7 @@ You are ready to start pulling data.  But some choices need to be made first.
 
 > This is a good time to discuss the topic of Saleforce API limits.  For each run, for each table, one metadata API call is made to detect schema changes and one query is issues to pull down changed records, giving a minimum of 2 per table per run.  If you run snapshots every 2 hours on 20 tables, that's 12 x 20 x 2 = 480/day **minimum**. I say _minimum_ because this is best-case scenario where there are less than a few hundred changes. With larger data queries, Salesforce returns the data in "chunks" and API users are required to call back to Salesforce to retrieve the next chunk, until are all retrieved.  So for sobjects with a lot of activity, like User, Account, Lead, Opportunity, etc, there could be hundreds of calls for each run.
 
-> Fortunately, Gurglefish reports to you at the end of a run the total number of API calls consumed so you can keep an eye on it. You can compare to the documented limits [here](https://developer.salesforce.com/docs/atlas.en-us.salesforce_app_limits_cheatsheet.meta/salesforce_app_limits_cheatsheet/salesforce_app_limits_platform_api.htm). So, for example, if you have an Enterprise license and 65+ users you already have the maximum of 1,000,000 calls per day limit.
+> Fortunately, Gurglefish reports to you at the end of a run the total number of API calls consumed so you can keep an eye on it. You can compare to the documented limits [here](https://developer.salesforce.com/docs/atlas.en-us.salesforce_app_limits_cheatsheet.meta/salesforce_app_limits_cheatsheet/salesforce_app_limits_platform_api.htm). So, for example, if you have an Enterprise license and 65+ users you already have the maximum of 1,000,000 calls rolling 24-hour window.
 
 > And remember, you are sharing those limits with your other integrations.
 
