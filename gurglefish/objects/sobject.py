@@ -92,7 +92,7 @@ class SObjectFields(object):
                     continue
                 name = field['name']
             else:
-                if field.type == 'address':
+                if field.get_type == 'address':
                     continue
                 name = field.name
             self.fields[name.lower()] = SObjectField(field)
