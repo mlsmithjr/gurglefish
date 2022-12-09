@@ -26,7 +26,7 @@ setuptools.setup(
     include_package_data=True,
 #    data_files=[('share/doc/gurglefish', ['README.md', 'LICENSE' ]), ('config', ['gurglefish/logging.yml'])],
     packages=setuptools.find_packages(),
-    install_requires=['requests==2.21.0', 'psycopg2-binary==2.8', 'fastcache==1.0.2', 'arrow==0.15.1', 'python-dateutil==2.8.0', 'pyyaml==5.1'],
+    install_requires=['requests==2.21.0', 'psycopg2-binary==2.8', 'fastcache==1.0.2', 'arrow==0.15.1', 'python-dateutil==2.8.0', 'pyyaml==5.4'],
     entry_points={"console_scripts": ["gurglefish=gurglefish.sfarchive:main"]},
     classifiers=[
       'Programming Language :: Python :: 3',
